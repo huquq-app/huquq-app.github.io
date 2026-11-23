@@ -1,5 +1,5 @@
 // غيّر رقم الإصدار مع كل تحديث للتطبيق حتى تصل التحديثات للجوال
-var CACHE = 'huquq-v9';
+var CACHE = 'huquq-v10';
 var FONTS = 'huquq-fonts'; // الخطوط تُحفظ أول مرة وتبقى عبر التحديثات
 var FILES = ['./', './index.html', './manifest.json', './icon-192.png', './icon-512.png'];
 
