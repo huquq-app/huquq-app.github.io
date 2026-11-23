@@ -1019,23 +1019,23 @@ function dueInfo(p, t){
 function dueCard(p){
   var h = '';
   ['alay','li'].forEach(function(t){
-    var d = dueInfo(p, t); if(d.es.length<2 || !d.dated.length) return;
+    var d = dueInfo(p, t); if(!d.es.length) return;
     var me = t==='alay';
-    h += '<div class="sched"><div class="sh"><h4>'+(me?'المستحق عليك له':'المستحق لك عنده')+'</h4></div><div class="line">'+
-      (d.now>0 ? '<span class="r">مستحق الآن: <b>'+money(d.now)+'</b></span>' :
+    h += '<div class="sched"><div class="sh"><h4>'+(me?'السداد له':'الاستلام منه')+'</h4></div><div class="line">'+
+      (!d.next ? 'لا موعد محدد للسداد.' : d.now>0 ? '<span class="r">مستحق الآن: <b>'+money(d.now)+'</b></span>' :
         'أقرب موعد: <b>'+fmtDate(dueOf(d.next))+'</b> ('+whenLabel(dueOf(d.next))+') بمبلغ <b>'+money(d.nxAmt)+'</b>')+
-      '<br>المتبقي كله في '+countTxt(d.es.length,'حق واحد','حقين','حقوق','حقًا')+': <b>'+money(d.all)+'</b></div>'+
-      '<div class="ebtns"><button class="smallbtn pri" data-paydue="'+t+'">'+(me?'سداد المستحق':'استلام المستحق')+' ('+money(d.def)+')</button></div></div>';
+      '<br>المتبقي كله'+(d.es.length>1?' في '+countTxt(d.es.length,'حق واحد','حقين','حقوق','حقًا'):'')+': <b>'+money(d.all)+'</b></div>'+
+      '<div class="ebtns"><button class="smallbtn pri" data-paydue="'+t+'">'+(me?'سداد':'استلام')+(d.def>0?' المستحق ('+money(d.def)+')':' مبلغ')+'</button></div></div>';
   });
   return h;
 }
 /* دفعة واحدة تُوزَّع على الحقوق: أولًا ما حلّ موعده (الأقدم موعدًا أولًا)، ثم الباقي */
 function openDuePay(p, t){
   var d = dueInfo(p, t), me = t==='alay';
-  sheet('<h3>'+(me?'سداد المستحق لـ ':'استلام المستحق من ')+esc(p.name)+'</h3><div class="hint" style="margin-bottom:12px;line-height:1.8">'+
+  sheet('<h3>'+(me?'سداد لـ ':'استلام من ')+esc(p.name)+'</h3><div class="hint" style="margin-bottom:12px;line-height:1.8">'+
     (d.now>0?'المستحق الآن: <b>'+money(d.now)+'</b><br>':'')+'المتبقي كله: <b>'+money(d.all)+'</b><br>يُوزَّع المبلغ على الحقوق حسب مواعيدها، الأقدم أولًا.</div>'+
     '<div class="err hidden" id="dpErr"></div>'+
-    '<div class="field"><label>المبلغ (ريال)</label><input id="dpAmount" type="number" inputmode="decimal" min="0" step="0.01" value="'+round2(d.def)+'"></div>'+
+    '<div class="field"><label>المبلغ (ريال)</label><input id="dpAmount" type="number" inputmode="decimal" min="0" step="0.01" value="'+(d.def>0?round2(d.def):'')+'" placeholder="المتبقي '+round2(d.all)+'"></div>'+
     '<div class="field"><label>التاريخ</label><input id="dpDate" type="date" value="'+today()+'"></div>'+
     '<div class="field"><label>ملاحظة (اختياري)</label><input id="dpNote" placeholder="مثال: تحويل بنكي، نقدًا..."></div>'+
     '<div class="actions"><button class="btn pri" id="dpOk">حفظ</button><button class="btn sec" id="dpNo">إلغاء</button></div>');
