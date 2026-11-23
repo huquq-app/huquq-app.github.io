@@ -506,6 +506,7 @@ function renderHome(){
     '<div class="box net"><div class="lbl">الصافي</div><div class="val '+(t.net>=0?'g':'r')+'">'+
       (t.net===0?'متعادل':(t.net>0?'لك ':'عليك ')+money(Math.abs(t.net)))+'</div></div>'+
   '</div>';
+  if(!owner().name && db.entries.length) html += '<button class="sched-cta" id="ownerCta"><i>✎</i><span><b>أضف اسمك وتوقيعك</b><br>ليظهرا في رسائل الواتساب وكشوف الحساب التي ترسلها.</span></button>';
   if(t.late) html += '<div class="alert">⚠ يوجد '+t.late+' '+(t.late===1?'حق متأخر':'حقوق متأخرة')+' عن موعد السداد</div>';
   var up = upcoming(14);
   if(up.length){
@@ -572,6 +573,7 @@ function renderHome(){
   q.oninput = function(){ state.q = q.value; var pos=q.selectionStart; renderHome(); var nq=$('q'); nq.focus(); nq.setSelectionRange(pos,pos); };
   document.querySelectorAll('.chip').forEach(function(b){ b.onclick=function(){ state.filter=b.dataset.f; renderHome(); }; });
   document.querySelectorAll('.person,.uprow').forEach(function(b){ b.onclick=function(){ go('person', b.dataset.p); }; });
+  if($('ownerCta')) $('ownerCta').onclick = function(){ go('settings'); };
 }
 
 /* ============ صفحة الشخص ============ */
@@ -1065,6 +1067,15 @@ function waPhone(ph){
 }
 /* رسالة واتساب: تنسيق واتساب (*عريض*) وكل سطر يبدأ بكلمة عربية حتى يبقى اتجاهه من اليمين */
 var WA_LINE = '────────────';
+function owner(){ return db.owner || {}; }
+/* سطور التوقيع في آخر الرسالة: التوقيع إن كُتب، وإلا الاسم، ثم الجوال */
+function signLines(){
+  var o = owner(), L = [];
+  if(o.sign) L = L.concat(String(o.sign).split('\n').map(function(x){ return x.trim(); }).filter(Boolean));
+  else if(o.name) L.push(o.name);
+  if(o.phone) L.push('جوال: '+o.phone);
+  return L;
+}
 function waEntry(e, i){
   var L = [], its = (e.items||[]).slice().sort(function(a,b){ return (a.date||'').localeCompare(b.date||''); });
   L.push('*'+i+') '+(e.reason||'حق مالي')+'*');
@@ -1094,7 +1105,9 @@ function waUrl(p){
     .sort(function(a,b){ return (a.date||'').localeCompare(b.date||''); });
   var li = open.filter(function(e){ return e.type==='li'; }), al = open.filter(function(e){ return e.type!=='li'; });
   var s = personStats(p.id);
-  var L = ['السلام عليكم ورحمة الله وبركاته', '', '*كشف الحقوق المالية بيننا*', 'حتى تاريخ: '+fmtDate(today())];
+  var L = ['السلام عليكم ورحمة الله وبركاته', '', '*كشف الحقوق المالية بيننا*'];
+  if(owner().name) L.push('من: '+owner().name+' — إلى: '+p.name);
+  L.push('حتى تاريخ: '+fmtDate(today()));
   if(!open.length){
     L.push('', 'لا توجد حقوق متبقية بيننا، والحمد لله.');
   } else {
@@ -1119,6 +1132,7 @@ function waUrl(p){
     L.push(WA_LINE);
   }
   L.push('', 'وجزاك الله خيرًا.');
+  var sg = signLines(); if(sg.length){ L.push(''); L = L.concat(sg); }
   return 'https://wa.me/'+waPhone(p.phone)+'?text='+encodeURIComponent(L.join('\n'));
 }
 function printStatement(p){
@@ -1131,10 +1145,10 @@ function printStatement(p){
       (e.items||[]).slice().sort(function(a,b){ return (a.date||'').localeCompare(b.date||''); }).map(function(x){ return '<tr><td>'+fmtDate(x.date)+'</td><td colspan="6">↳ إضافة: '+esc(x.desc||'')+' '+money(x.amount)+'</td></tr>'; }).join('')+
       e.payments.map(function(py){ return '<tr><td>'+fmtDate(py.date)+'</td><td colspan="6">↳ دفعة: '+money(py.amount)+(py.note?' — '+esc(py.note):'')+'</td></tr>'; }).join('');
   }).join('');
-  $('print').innerHTML = '<h2>كشف حساب: '+esc(p.name)+'</h2><div>تاريخ الكشف: '+fmtDate(today())+(p.phone?' · الجوال: '+esc(p.phone):'')+'</div>'+
+  $('print').innerHTML = '<h2>كشف حساب: '+esc(p.name)+'</h2>'+(owner().name?'<div>صاحب الحساب: '+esc(owner().name)+(owner().phone?' · '+esc(owner().phone):'')+'</div>':'')+'<div>تاريخ الكشف: '+fmtDate(today())+(p.phone?' · جوال '+esc(p.name)+': '+esc(p.phone):'')+'</div>'+
     '<table><tr><th>التاريخ</th><th>الوصف</th><th>النوع</th><th>المبلغ</th><th>المسدَّد</th><th>المتبقي</th><th>موعد السداد</th></tr>'+rows+'</table>'+
     '<div class="tot">إجمالي ما لي عنده: '+money(s.li)+' · إجمالي ما علي له: '+money(s.alay)+' · الصافي: '+
-      (s.net>0?'لي عنده '+money(s.net):s.net<0?'علي له '+money(-s.net):'متعادل')+'</div>';
+      (s.net>0?'لي عنده '+money(s.net):s.net<0?'علي له '+money(-s.net):'متعادل')+'</div>'+(signLines().length?'<div style="margin-top:28px;text-align:left;white-space:pre-line">'+esc(signLines().join('\n'))+'</div>':'');
   window.print();
 }
 
@@ -1275,7 +1289,7 @@ function stampNow(){
   var d = new Date(); d.setMinutes(d.getMinutes()-d.getTimezoneOffset());
   return d.toISOString().slice(0,16).replace('T',' ').replace(':','-');
 }
-function backupJson(){ return JSON.stringify({app:'huquq', version:3, exported:new Date().toISOString(), people:db.people, entries:db.entries}); }
+function backupJson(){ return JSON.stringify({app:'huquq', version:3, exported:new Date().toISOString(), owner:db.owner||null, people:db.people, entries:db.entries}); }
 function listBackups(token, fid){
   var q = encodeURIComponent("'"+fid+"' in parents and trashed=false");
   return gfetch(token, GD+'?q='+q+'&orderBy=createdTime desc&pageSize=100&fields=files(id,name,createdTime)')
@@ -1374,7 +1388,7 @@ function bindDrive(){
           gfetch(token, GD+'/'+btn.dataset.f+'?alt=media').then(function(r){ return r.json(); }).then(function(d){
             if(d.app!=='huquq' || !Array.isArray(d.people) || !Array.isArray(d.entries)) throw new Error('bad');
             ask('سيتم استبدال البيانات الحالية بهذه النسخة ('+d.people.length+' شخص، '+d.entries.length+' حق). متابعة؟', 'نعم، استرجع', function(){
-              db.people = d.people; db.entries = d.entries; save(); go('home'); toast('تم استرجاع النسخة');
+              db.people = d.people; db.entries = d.entries; if(d.owner) db.owner = d.owner; save(); go('home'); toast('تم استرجاع النسخة');
             }, true);
           }).catch(function(){ info('تعذّر قراءة هذه النسخة.'); });
         }; });
@@ -1402,6 +1416,13 @@ function bindDrive(){
 function renderSettings(){
   $('title').textContent = 'الإعدادات';
   $('app').innerHTML =
+    '<div class="set" id="ownerSet"><h4>بياناتك</h4><p>تظهر في رسائل الواتساب وكشوف الحساب التي ترسلها.</p>'+
+      '<div class="field"><label>اسمك</label><input id="oName" value="'+esc(owner().name||'')+'" placeholder="مثال: نصر بن محمد"></div>'+
+      '<div class="field"><label>جوالك (اختياري)</label><input id="oPhone" type="tel" dir="ltr" value="'+esc(owner().phone||'')+'" placeholder="05xxxxxxxx"></div>'+
+      '<div class="field"><label>التوقيع في آخر الرسالة (اختياري)</label><textarea id="oSign" placeholder="مثال: أخوك المحب\nنصر بن محمد">'+esc(owner().sign||'')+'</textarea>'+
+        '<div class="hint">إن تركته فارغًا يُكتب اسمك فقط.</div></div>'+
+      '<div class="hint" id="oPrev" style="white-space:pre-line;background:var(--soft2);border-radius:10px;padding:10px;margin-bottom:12px"></div>'+
+      '<button class="btn pri" id="oSave">حفظ بياناتي</button></div>'+
     '<div class="set"><h4>تغيير الرمز السري</h4><p>الرمز المكون من 4 أرقام الذي يُطلب عند فتح التطبيق.</p><button class="btn sec" id="chPin">تغيير الرمز</button></div>'+
     '<div class="set"><h4>قفل التطبيق الآن</h4><p>يُقفل التطبيق تلقائيًا أيضًا إذا خرجت منه أكثر من دقيقة.</p><button class="btn sec" id="lockNow">قفل الآن</button></div>'+
     driveSection()+
@@ -1410,7 +1431,17 @@ function renderSettings(){
       '<div class="actions"><button class="btn pri" id="exp">حفظ نسخة احتياطية</button><button class="btn sec" id="imp">استرجاع نسخة</button></div>'+
       '<input type="file" id="impFile" accept=".json,application/json" class="hidden"></div>')+
     '<div class="set"><h4>حذف كل البيانات</h4><p>يحذف كل الأشخاص والحقوق والدفعات من هذا الجوال نهائيًا.</p><button class="btn danger" id="wipe">حذف كل البيانات</button></div>'+
-    '<div class="hint" style="text-align:center;margin-top:16px">الحقوق المالية — الإصدار 6</div>';
+    '<div class="hint" style="text-align:center;margin-top:16px">الحقوق المالية — الإصدار 7</div>';
+  function ownerPrev(){
+    var tmp = {name:$('oName').value.trim(), phone:$('oPhone').value.trim(), sign:$('oSign').value.trim()}, keep = db.owner;
+    db.owner = tmp; var sg = signLines(); db.owner = keep;
+    $('oPrev').textContent = 'هكذا تنتهي رسائلك:\n\nوجزاك الله خيرًا.'+(sg.length?'\n\n'+sg.join('\n'):'');
+  }
+  ['oName','oPhone','oSign'].forEach(function(id){ $(id).oninput = ownerPrev; }); ownerPrev();
+  $('oSave').onclick = function(){
+    db.owner = {name:$('oName').value.trim(), phone:$('oPhone').value.trim(), sign:$('oSign').value.trim()};
+    save(); toast('تم حفظ بياناتك');
+  };
   $('chPin').onclick = function(){ showLock('change'); };
   $('lockNow').onclick = function(){ showLock('enter'); };
   bindDrive();
@@ -1426,7 +1457,7 @@ function renderSettings(){
   };
 }
 function exportData(){
-  var data = JSON.stringify({app:'huquq', version:1, exported:new Date().toISOString(), people:db.people, entries:db.entries}, null, 1);
+  var data = JSON.stringify({app:'huquq', version:1, exported:new Date().toISOString(), owner:db.owner||null, people:db.people, entries:db.entries}, null, 1);
   var blob = new Blob([data], {type:'application/json'});
   var a = document.createElement('a'); a.href = URL.createObjectURL(blob);
   a.download = 'الحقوق-المالية-نسخة-'+today()+'.json';
@@ -1442,7 +1473,7 @@ function importData(ev){
       var d = JSON.parse(rd.result);
       if(d.app!=='huquq' || !Array.isArray(d.people) || !Array.isArray(d.entries)) throw 0;
       ask('سيتم استبدال البيانات الحالية بما في النسخة ('+d.people.length+' شخص، '+d.entries.length+' حق). متابعة؟', 'نعم، استرجع', function(){
-        db.people=d.people; db.entries=d.entries; save(); go('home'); toast('تم استرجاع النسخة');
+        db.people=d.people; db.entries=d.entries; if(d.owner) db.owner=d.owner; save(); go('home'); toast('تم استرجاع النسخة');
       }, true);
     }catch(e){ info('هذا الملف ليس نسخة احتياطية صحيحة من تطبيق الحقوق المالية.'); }
   };
