@@ -447,6 +447,45 @@ header h1{font-size:20px;letter-spacing:.2px}
 .kindpill{font-size:11px;padding:2px 8px;border-radius:999px;white-space:nowrap}
 .kindpill.fx{background:var(--tint);color:var(--brand-ink)}
 .kindpill.vr{background:var(--gold-soft);color:var(--gold)}
+.fxpill{font-size:11px;padding:2px 8px;border-radius:999px;white-space:nowrap;font-weight:600}
+.fxpill.fx{background:var(--soft);color:var(--ink2);border:1px solid var(--line)}
+.fxpill.rd{background:var(--gold-soft);color:var(--gold);border:1px solid rgba(180,138,47,.3)}
+.fxsplit{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:4px 0 8px}
+.fxsplit div{background:var(--soft2);border:1px solid var(--line);border-radius:12px;padding:8px 10px;font-size:12px;color:var(--muted)}
+.fxsplit b{display:block;font-family:var(--f-head);font-size:15px;color:var(--ink)}
+.sugg.warn{background:var(--red-bg);border-color:transparent;color:var(--ink)}
+/* التقرير */
+.rep{font-size:14px;line-height:1.7}
+.rep .rh{border-bottom:2px solid var(--gold);padding-bottom:8px;margin-bottom:12px}
+.rep .rh h2{font-family:var(--f-head);font-size:20px;margin:0}
+.rep .rh div{font-size:12px;color:var(--muted)}
+.rep h3{font-family:var(--f-head);font-size:16px;margin:18px 0 6px;color:var(--brand-ink)}
+.rep .kpis{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.rep .kpis div{background:var(--soft2);border:1px solid var(--line);border-radius:12px;padding:8px 10px;font-size:12px;color:var(--muted)}
+.rep .kpis b{display:block;font-family:var(--f-head);font-size:16px;color:var(--ink)}
+.rep .tw{overflow-x:auto}
+.rep table{width:100%;border-collapse:collapse;font-size:13px}
+.rep th,.rep td{border-bottom:1px solid var(--line);padding:6px 4px;text-align:right;vertical-align:top}
+.rep th{color:var(--muted);font-weight:600;font-size:12px}
+.rep td.n,.rep th.n{text-align:left;white-space:nowrap;font-variant-numeric:tabular-nums}
+.rep tr.sum td{font-weight:700;border-top:2px solid var(--line)}
+.rep .catblk{border:1px solid var(--line);border-radius:14px;padding:10px 12px;margin-bottom:10px;break-inside:avoid}
+.rep .catblk .ch{display:flex;justify-content:space-between;gap:8px;font-weight:700;font-family:var(--f-head)}
+.rep .catblk .cm{font-size:12px;color:var(--muted);margin-bottom:4px}
+.rep .ops{font-size:12px;color:var(--ink2);margin-top:6px}
+.rep .ops summary{cursor:pointer;color:var(--brand-ink);font-weight:600}
+.rep .will-pre{white-space:pre-wrap;background:var(--soft2);border:1px solid var(--line);border-radius:12px;padding:10px 12px}
+.rep .pblk{border:1px solid var(--line);border-radius:14px;padding:10px 12px;margin-bottom:10px;break-inside:avoid}
+.rep .pblk .ph{display:flex;justify-content:space-between;gap:8px;font-family:var(--f-head);font-weight:700}
+.rep .eblk{border-top:1px dashed var(--line);margin-top:8px;padding-top:8px}
+.rep .eblk .et{font-weight:700}
+.rep .sigs{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:10px}
+.rep .sigs div{border-top:1px solid var(--ink2);padding-top:6px;font-size:12px;color:var(--muted);min-height:70px}
+.rep .sigimg{max-height:80px;max-width:220px;display:block}
+.will-btn{display:flex;align-items:center;gap:12px;width:100%;text-align:right;background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:14px 16px;margin-bottom:14px;box-shadow:var(--shadow);color:var(--ink)}
+.will-btn i{font-style:normal;font-size:22px;color:var(--gold)}
+.will-btn span{flex:1;font-size:13px;color:var(--muted);line-height:1.7}
+.will-btn b{display:block;font-family:var(--f-head);font-size:15px;color:var(--ink)}
 .subhead{font-size:13px;color:var(--muted);margin:12px 0 2px;font-weight:600}
 /* الشاشة بالعرض أو القصيرة */
 #lock{overflow-y:auto}
@@ -478,6 +517,11 @@ header h1{font-size:20px;letter-spacing:.2px}
   #print th,#print td{border:1px solid #999;padding:6px;text-align:right}
   #print th{background:#eee}
   #print .tot{margin-top:12px;font-weight:700;font-size:15px}
+  #print .rep *{color:#000!important;background:none!important}
+  #print .rep .catblk{border-color:#999}
+  #print .rep th,#print .rep td{border:1px solid #bbb}
+  #print .rep details{display:block}
+  #print .rep details>*{display:block}
 }
 </style>
 </head>
@@ -2259,6 +2303,12 @@ function incTotals(){
 /* الخطة = بنود الخطة الشهرية (b.fixed) لكل فئة. الواقع = المصروفات المسجلة (b.exp). */
 function planByCat(){ var o = {}; bud().fixed.forEach(function(x){ var c = x.cat||guessCat(x.name); o[c] = round2((o[c]||0) + x.amount); }); return o; }
 function planTotal(){ return sumArr(bud().fixed); }
+/* بند الخطة ثابت (لا يُقترح تخفيضه) أو قابل للتقليل. الافتراضي حسب الفئة إن لم يحدده المستخدم */
+var FIXED_CATS = ['house','bills','edu','debt','health'];
+function isFixedLine(x){ return x.fx!=null ? !!x.fx : FIXED_CATS.indexOf(x.cat||guessCat(x.name))>=0; }
+function planLines(cat){ return bud().fixed.filter(function(x){ return (x.cat||guessCat(x.name))===cat; }); }
+function reducibleOf(cat){ return round2(planLines(cat).filter(function(x){ return !isFixedLine(x); }).reduce(function(a,x){ return a+x.amount; },0)); }
+function fixedTotal(){ return round2(bud().fixed.filter(isFixedLine).reduce(function(a,x){ return a+x.amount; },0)); }
 function actByCat(ym){ var o = {}; expOfMonth(ym).forEach(function(x){ o[x.cat] = round2((o[x.cat]||0) + x.amount); }); return o; }
 function objSum(o){ return round2(Object.keys(o).reduce(function(a,k){ return a+o[k]; },0)); }
 /* متوسط الصرف الفعلي: آخر 3 أشهر كاملة منذ أول تسجيل (الشهر الفارغ = 0)، وإلا تقدير من الشهر الحالي */
@@ -2298,10 +2348,13 @@ function planSuggestions(){
   if(!aa.has) return out;
   Object.keys(pc).concat(Object.keys(aa.byCat)).forEach(function(k){ cats[k] = 1; });
   Object.keys(cats).forEach(function(k){
-    var p = pc[k]||0, a = aa.byCat[k]||0, c = catById(k), to = Math.ceil(a/10)*10;
-    if(p===0 && a>=50) out.push({cat:k, to:to, txt:'تصرف على «'+c.name+'» نحو '+money(a)+' شهريًا، ولا يوجد لها بند في خطتك.', act:'أضف بندًا بـ '+money(to)});
-    else if(p>0 && a>p*1.1 && a-p>=50) out.push({cat:k, to:to, txt:'«'+c.name+'»: صرفك الفعلي '+money(a)+' أعلى من خطتك '+money(p)+' بـ '+money(round2(a-p))+'. إما أن ترفع الخطة لتكون واقعية، أو تقلل الصرف عليها.', act:'اجعل الخطة '+money(to)});
-    else if(p>0 && a<p*0.85 && p-a>=50) out.push({cat:k, to:to, txt:'«'+c.name+'»: تصرف '+money(a)+' فقط من خطة '+money(p)+'. خفضها يزيد المتاح للسداد نحو '+money(round2(p-to))+' شهريًا.', act:'خفّض الخطة إلى '+money(to)});
+    var p = pc[k]||0, a = aa.byCat[k]||0, c = catById(k), to = Math.ceil(a/10)*10, red = reducibleOf(k), allFixed = p>0 && red===0;
+    if(p===0 && a>=50) out.push({cat:k, to:to, txt:'تصرف على «'+c.name+'» نحو '+money(a)+' شهريًا، ولا يوجد لها بند في خطتك. أضفه لتكون الخطة واقعية.', act:'أضف بندًا بـ '+money(to)});
+    else if(p>0 && a>p*1.1 && a-p>=50) out.push({cat:k, to:to, txt:'«'+c.name+'»: صرفك الفعلي '+money(a)+' أعلى من خطتك '+money(p)+' بـ '+money(round2(a-p))+'. '+
+      (allFixed ? 'وهو بند ثابت، فالأصح أن ترفع الخطة إلى الواقع.' : 'ارفع الخطة لتكون واقعية، أو قلّل الصرف عليها إن استطعت.'), act:'اجعل الخطة '+money(to)});
+    else if(p>0 && a<p*0.85 && p-a>=50 && red>0){
+      var cut = Math.min(round2(p-to), red); if(cut>=50) out.push({cat:k, to:round2(p-cut), cut:true, txt:'«'+c.name+'»: تصرف '+money(a)+' فقط من خطة '+money(p)+'. تخفيض الجزء القابل للتقليل يزيد المتاح للسداد نحو '+money(cut)+' شهريًا.', act:'خفّض الخطة إلى '+money(round2(p-cut))});
+    }
   });
   return out;
 }
@@ -2309,12 +2362,26 @@ function applySuggestion(cat, to){
   var b = bud(), lines = b.fixed.filter(function(x){ return (x.cat||guessCat(x.name))===cat; });
   var cur = round2(lines.reduce(function(a,x){ return a+x.amount; },0)), diff = round2(to-cur);
   if(!lines.length) b.fixed.push({id:uid(), name:catById(cat).name, cat:cat, amount:to});
-  else { var big = lines.sort(function(a,c){ return c.amount-a.amount; })[0]; big.amount = Math.max(0, round2(big.amount+diff)); }
+  else if(diff<0){ // التخفيض من البنود القابلة للتقليل فقط، الأكبر أولًا
+    var left = -diff; lines.filter(function(x){ return !isFixedLine(x); }).sort(function(a,c){ return c.amount-a.amount; }).forEach(function(x){ var d = Math.min(x.amount, left); x.amount = round2(x.amount-d); left = round2(left-d); });
+  } else { var big = lines.sort(function(a,c){ return c.amount-a.amount; })[0]; big.amount = round2(big.amount+diff); }
   save();
+}
+function feasBlock(){
+  var f = finSummary(), pt = f.pt, inc = f.inc, fx = fixedTotal(), need = round2(pt + f.com - inc);
+  if(!(inc>0) || !(pt>0)) return '';
+  if(need>0){
+    var red = round2(pt - fx), pc = planByCat();
+    var tops = Object.keys(pc).map(function(k){ return {k:k, r:reducibleOf(k)}; }).filter(function(x){ return x.r>0; }).sort(function(a,c){ return c.r-a.r; }).slice(0,3);
+    return '<div class="sugg warn"><b>الخطة غير قابلة للتنفيذ:</b> الخطة '+money(pt)+(f.com>0?' + أقساط الشهر القادم '+money(f.com):'')+' أكبر من دخلك '+money(inc)+' بـ <b>'+money(need)+'</b>.'+
+      '<br>منها ثابت لا يُقلَّل: '+money(fx)+'، والقابل للتقليل: '+money(red)+'.'+
+      (red>=need ? (tops.length?'<br>ابدأ بالتقليل من: '+tops.map(function(x){ return '«'+catById(x.k).name+'» ('+money(x.r)+')'; }).join('، ')+'.':'') : '<br>حتى لو قلّلت كل القابل للتقليل يبقى عجز؛ تحتاج دخلًا إضافيًا أو تأجيل بعض الأقساط.')+'</div>';
+  }
+  return '<div class="sugg">الخطة قابلة للتنفيذ: يبقى من دخلك بعد الخطة'+(f.com>0?' والأقساط':'')+' <b>'+money(-need)+'</b> شهريًا.</div>';
 }
 function suggBlock(){
   var sg = planSuggestions(), aa = actualAvg();
-  var h = '<div class="fcard"><h4><span>مقترحات لتحسين الخطة</span></h4>';
+  var h = '<div class="fcard"><h4><span>مقترحات لتحسين الخطة</span></h4>'+feasBlock();
   if(!aa.has) return h+'<div class="line">تظهر المقترحات بعد أن تسجّل مصاريفك الفعلية في تبويب «الواقع».</div></div>';
   if(!sg.length) return h+'<div class="line">خطتك قريبة من واقعك ('+aa.how+'). أحسنت.</div></div>';
   return h+'<div class="hint">مبنية على '+aa.how+'.</div>'+sg.map(function(x,i){ return '<div class="sugg">'+x.txt+'<br><button class="smallbtn pri" data-sugg="'+i+'">'+x.act+'</button></div>'; }).join('')+'</div>';
@@ -2365,12 +2432,13 @@ function tabPlan(f, ym){
   var b = bud(), pc = planByCat();
   var h = incomeBlock(ym);
   h += '<div class="fcard"><h4><span>خطة الصرف الشهرية</span><b>'+money(f.pt)+'</b></h4>'+
-    '<div class="hint" style="margin-bottom:6px">تقديراتك لما تصرفه كل شهر على كل باب: إيجار، مواد غذائية، بنزين، فواتير... هذه «الخطة»، أما ما تصرفه فعلًا فتسجّله في «الواقع».</div>';
+    '<div class="hint" style="margin-bottom:6px">تقديراتك لما تصرفه كل شهر على كل باب: إيجار، مواد غذائية، بنزين، فواتير... هذه «الخطة»، أما ما تصرفه فعلًا فتسجّله في «الواقع». اضغط على أي بند لتحدد هل هو ثابت أو قابل للتقليل.</div>'+
+    (b.fixed.length?'<div class="fxsplit"><div>ثابت (لا يُقلَّل)<b>'+money(fixedTotal())+'</b></div><div>قابل للتقليل<b>'+money(round2(f.pt-fixedTotal()))+'</b></div></div>':'');
   var cats = Object.keys(pc).sort(function(a,c){ return pc[c]-pc[a]; });
   cats.forEach(function(k){
     h += '<div class="subhead">'+catById(k).name+' — '+money(pc[k])+'</div>'+
       b.fixed.filter(function(x){ return (x.cat||guessCat(x.name))===k; }).map(function(x){
-        return '<button class="lrow" data-fix="'+x.id+'"><span class="n">'+esc(x.name)+'</span><b>'+money(x.amount)+'</b></button>'; }).join('');
+        return '<button class="lrow" data-fix="'+x.id+'"><span class="n">'+esc(x.name)+'</span><span class="fxpill '+(isFixedLine(x)?'fx">ثابت':'rd">قابل للتقليل')+'</span><b>'+money(x.amount)+'</b></button>'; }).join('');
   });
   h += '<button class="smallbtn pri" style="margin-top:10px" id="bAdd_fix">+ بند في الخطة</button></div>';
   h += '<div class="fcard"><h4><span>احتياطي الطوارئ</span></h4><div class="hint" style="margin-bottom:8px">نسبة تُترك من الفائض ولا تدخل في السداد.</div><select id="bMargin" style="width:100%;padding:11px;border:1px solid var(--line);border-radius:12px;background:var(--input)">'+
@@ -2390,6 +2458,7 @@ function tabAct(ym){
       '<div class="bar2"><i style="width:'+Math.max(3,c.t/mx*100)+'%"></i></div></summary><div class="its">'+
       Object.keys(c.items).sort(function(a,c2){ return c.items[c2]-c.items[a]; }).map(function(k){ return '<div><span>'+esc(k)+'</span><b>'+money(c.items[k])+'</b></div>'; }).join('')+'</div></details>';
   });
+  if(cats.length) h += '<button class="btn pri full" style="margin-top:12px" id="bReport">تقرير مفصّل لصرفيات '+monthLabel(ym)+'</button>';
   h += '</div><div class="fcard"><h4><span>مصاريف '+monthLabel(ym)+'</span><button class="smallbtn pri" id="bAddExp">+ مصروف</button></h4>'+
     (ex.length ? ex.slice().sort(function(a,c){ return c.date.localeCompare(a.date); }).map(function(x){
       return '<button class="lrow" data-exp="'+x.id+'"><span class="n">'+esc(x.item||'بدون وصف')+'<small>'+fmtDate(x.date)+'</small></span><span class="catpill">'+catById(x.cat).name+'</span><b>'+money(x.amount)+'</b></button>';
@@ -2427,6 +2496,7 @@ function bindBudget(ym, f){
   if($('mPrev')) $('mPrev').onclick = function(){ state.bMonth = addMonthsYM(ym,-1); renderBudget(); };
   if($('mNext')) $('mNext').onclick = function(){ state.bMonth = addMonthsYM(ym,1); renderBudget(); };
   if($('bAddExp')) $('bAddExp').onclick = function(){ openExpForm(); };
+  if($('bReport')) $('bReport').onclick = function(){ openReport(ym); };
   if($('bAdd_inc')) $('bAdd_inc').onclick = function(){ openIncomeForm(); };
   if($('bAdd_fix')) $('bAdd_fix').onclick = function(){ openMonthlyForm('fixed'); };
   document.querySelectorAll('[data-exp]').forEach(function(x){ x.onclick = function(){ openExpForm(x.dataset.exp); }; });
@@ -2606,19 +2676,157 @@ function openMonthlyForm(kind, id){
   sheet('<h3>'+(isFix?(x?'تعديل بند في الخطة':'بند في الخطة الشهرية'):(x?'تعديل دخل':'دخل شهري'))+'</h3><div class="err hidden" id="mErr"></div>'+
     '<div class="field"><label>'+(isFix?'الوصف':'مصدر الدخل')+'</label><input id="mName" value="'+esc(x?x.name:'')+'" placeholder="'+(isFix?'مثال: إيجار، مواد غذائية، بنزين، كهرباء':'مثال: راتب')+'"><div class="autocat" id="mAuto"></div></div>'+
     '<div class="field"><label>'+(isFix?'المبلغ المخطط شهريًا (ريال)':'المبلغ الشهري (ريال)')+'</label><input id="mAmount" type="number" inputmode="decimal" min="0" step="0.01" value="'+(x?x.amount:'')+'"></div>'+
-    (isFix?'<div class="field"><label>الفئة</label><select id="mCat">'+catOptions(x?(x.cat||guessCat(x.name)):'other')+'</select></div>':'')+
+    (isFix?'<div class="field"><label>الفئة</label><select id="mCat">'+catOptions(x?(x.cat||guessCat(x.name)):'other')+'</select></div>'+
+      '<div class="field"><label>نوع البند</label><div class="toggle sm" id="mFx"><button type="button" class="pl" data-fx="1">ثابت (لا يُقترح تخفيضه)</button><button type="button" class="pl" data-fx="0">قابل للتقليل</button></div>'+
+      '<div class="hint">الثابت مثل الإيجار والأقساط والفواتير. القابل للتقليل مثل المطاعم والترفيه والكماليات.</div></div>':'')+
     '<div class="actions"><button class="btn pri" id="mSave">حفظ</button>'+(x?'<button class="btn danger" id="mDel">حذف</button>':'<button class="btn sec" id="mNo">إلغاء</button>')+'</div>');
-  var manual = !!x;
-  if(isFix){ $('mName').oninput = function(){ if(!manual) $('mCat').value = guessCat($('mName').value); $('mAuto').textContent = $('mName').value.trim() ? 'التصنيف التلقائي: '+catById(guessCat($('mName').value)).name : ''; }; $('mCat').onchange = function(){ manual = true; }; }
+  var manual = !!x, fxSet = x && x.fx!=null ? !!x.fx : null;
+  function fxNow(){ return fxSet!=null ? fxSet : FIXED_CATS.indexOf($('mCat').value)>=0; }
+  function drawFx(){ if(!$('mFx')) return; var v = fxNow(); document.querySelectorAll('#mFx button').forEach(function(bt){ bt.classList.toggle('on', (bt.dataset.fx==='1')===v); }); }
+  if(isFix){ document.querySelectorAll('#mFx button').forEach(function(bt){ bt.onclick = function(){ fxSet = bt.dataset.fx==='1'; drawFx(); }; }); drawFx(); }
+  if(isFix){ $('mName').oninput = function(){ if(!manual) $('mCat').value = guessCat($('mName').value); drawFx(); $('mAuto').textContent = $('mName').value.trim() ? 'التصنيف التلقائي: '+catById(guessCat($('mName').value)).name : ''; }; $('mCat').onchange = function(){ manual = true; drawFx(); }; }
   if($('mNo')) $('mNo').onclick = closeSheet;
   $('mSave').onclick = function(){
     var n = $('mName').value.trim(), a = parseFloat($('mAmount').value), err = $('mErr');
     if(!n || !(a>0)){ err.textContent = 'اكتب الوصف والمبلغ.'; err.classList.remove('hidden'); return; }
-    var o = {name:n, amount:round2(a)}; if(isFix) o.cat = $('mCat').value;
+    var o = {name:n, amount:round2(a)}; if(isFix){ o.cat = $('mCat').value; o.fx = fxNow(); }
     if(x) Object.assign(x, o); else { o.id = uid(); arr.push(o); }
     save(); closeSheet(); renderBudget(); toast('تم الحفظ');
   };
   if($('mDel')) $('mDel').onclick = function(){ ask('حذف «'+x.name+'»؟', 'نعم، احذف', function(){ b[kind] = arr.filter(function(e){ return e.id!==id; }); save(); renderBudget(); }); };
+}
+/* ============ وثيقة الحقوق المالية (للوصية) ============ */
+var WILL_PRE = 'بسم الله الرحمن الرحيم\nالحمد لله، والصلاة والسلام على رسول الله، أما بعد:\nفهذه وثيقة بما لي من حقوق مالية عند الناس، وما علي من حقوق لهم، حتى تاريخ هذه الوثيقة. وأوصي من يلي أمري بأداء ما علي لأصحابه قبل قسمة التركة، وتحصيل ما لي ممن هو عليه، بالرفق والعدل.';
+function willEntryHtml(e){
+  var it = installments(e), r = Math.max(0, remaining(e)), pays = e.payments.slice().sort(function(a,b){ return (a.date||'').localeCompare(b.date||''); });
+  var h = '<div class="eblk"><div class="et">'+esc(e.reason||'حق مالي')+'</div>'+
+    '<table><tr><td>تاريخ الحق</td><td class="n">'+fmtDate(e.date)+'</td></tr>'+
+    '<tr><td>المبلغ'+((e.items||[]).length?' (الأول '+money(e.amount)+' + إضافات '+money(itemsSum(e))+')':'')+'</td><td class="n">'+money(total(e))+'</td></tr>'+
+    '<tr><td>المسدَّد</td><td class="n">'+money(paid(e))+'</td></tr>'+
+    '<tr class="sum"><td>المتبقي</td><td class="n">'+money(r)+'</td></tr>'+
+    '<tr><td>طريقة السداد</td><td class="n">'+planTxt(e)+(pmOf(e)==='once'&&e.due?' · موعده '+fmtDate(e.due):'')+'</td></tr></table>';
+  if(it && r>0){
+    var rest = it.filter(function(x){ return x.rest>0; });
+    h += '<div class="ops"><b>المواعيد المتبقية:</b> '+rest.map(function(x){ return fmtDate(x.date)+': '+money(x.rest)+(x.date<today()?' (متأخر)':''); }).join(' · ')+'</div>';
+  }
+  if(pays.length) h += '<div class="ops"><b>ما سُدِّد:</b> '+pays.map(function(py){ return fmtDate(py.date)+': '+money(py.amount); }).join(' · ')+'</div>';
+  if(e.notes) h += '<div class="ops"><b>ملاحظات:</b> '+esc(e.notes)+'</div>';
+  return h+'</div>';
+}
+function willHtml(o2){
+  var o = owner(), showDone = o2 && o2.done;
+  function sec(type){
+    var ppl = db.people.map(function(p){
+      var es = entriesOf(p.id).filter(function(e){ return (type==='li'?e.type==='li':e.type!=='li') && (showDone || remaining(e)>0); }).sort(function(a,b){ return (a.date||'').localeCompare(b.date||''); });
+      return {p:p, es:es, r:round2(es.reduce(function(a,e){ return a+Math.max(0,remaining(e)); },0))};
+    }).filter(function(x){ return x.es.length; }).sort(function(a,b){ return b.r-a.r; });
+    if(!ppl.length) return {h:'<div class="hint">لا يوجد.</div>', t:0, n:0};
+    var t = round2(ppl.reduce(function(a,x){ return a+x.r; },0));
+    return {t:t, n:ppl.length, h:ppl.map(function(x){
+      return '<div class="pblk"><div class="ph"><span>'+esc(x.p.name)+'</span><span>'+money(x.r)+'</span></div>'+
+        '<div class="hint">'+(x.p.phone?'جوال: <span dir="ltr">'+esc(x.p.phone)+'</span> · ':'')+countTxt(x.es.length,'حق واحد','حقان','حقوق','حقًا')+'</div>'+
+        x.es.map(willEntryHtml).join('')+'</div>';
+    }).join('')};
+  }
+  var al = sec('alay'), li = sec('li'), t = totals();
+  var h = '<div class="rep"><div class="rh"><h2>وثيقة الحقوق المالية</h2><div>'+(o.name?'صاحبها: '+esc(o.name)+' · ':'')+'حتى تاريخ '+fmtDate(today())+'</div></div>'+
+    '<div class="will-pre">'+esc(o.willPre||WILL_PRE)+'</div>';
+  h += '<h3>الخلاصة</h3><div class="kpis"><div>ما علي للناس'+(al.n?' ('+countTxt(al.n,'شخص واحد','شخصان','أشخاص','شخصًا')+')':'')+'<b class="r">'+money(t.alay)+'</b></div>'+
+    '<div>ما لي عند الناس'+(li.n?' ('+countTxt(li.n,'شخص واحد','شخصان','أشخاص','شخصًا')+')':'')+'<b class="g">'+money(t.li)+'</b></div></div>';
+  h += '<h3>أولًا: ما علي من حقوق للناس (تُؤدّى أولًا)</h3>'+al.h;
+  h += '<h3>ثانيًا: ما لي من حقوق عند الناس</h3>'+li.h;
+  if(o.willNote) h += '<h3>ثالثًا: وصايا وملاحظات</h3><div class="will-pre">'+esc(o.willNote)+'</div>';
+  h += '<h3>الإقرار والتوقيع</h3><div>أقرّ بأن ما في هذه الوثيقة صحيح حسب علمي حتى تاريخها، وما يُسجَّل بعدها من سداد أو حقوق جديدة يُرجع فيه إلى أحدث نسخة.</div>'+
+    '<div class="sigs"><div>المقرّ: '+esc(o.name||'..........................')+'<br>التاريخ: '+fmtDate(today())+(o.sigImg?'<img class="sigimg" src="'+o.sigImg+'" alt="التوقيع">':'<br>التوقيع:')+'</div><div></div>'+
+    '<div>الشاهد الأول: ..........................<br>التوقيع:</div><div>الشاهد الثاني: ..........................<br>التوقيع:</div></div></div>';
+  return h;
+}
+function openWill(){
+  var o = db.owner = db.owner || {}, done = false;
+  sheet('<h3>وثيقة الحقوق المالية</h3>'+
+    '<div class="field"><label>المقدمة (يمكنك تعديلها)</label><textarea id="wPre" rows="5">'+esc(o.willPre||WILL_PRE)+'</textarea></div>'+
+    '<div class="field"><label>وصايا وملاحظات إضافية (اختياري)</label><textarea id="wNote" rows="3" placeholder="مثال: الأوراق الأصلية في الدرج الأيمن، وفلان يعلم بالدين الفلاني...">'+esc(o.willNote||'')+'</textarea></div>'+
+    '<label style="display:flex;gap:8px;align-items:center;margin-bottom:12px;font-size:14px"><input type="checkbox" id="wDone"> إظهار الحقوق المسدَّدة بالكامل أيضًا</label>'+
+    (o.name?'':'<div class="hint" style="margin-bottom:8px">لم تكتب اسمك بعد — من الإعدادات ← بياناتك، ليظهر في الوثيقة.</div>')+
+    '<div id="willBox" style="max-height:none"></div>'+
+    '<div class="actions" style="margin-top:14px">'+(PREVIEW?'':'<button class="btn pri" id="wPrint">طباعة / حفظ PDF</button>')+
+    '<button class="btn sec'+(PREVIEW?' full':'')+'" id="wSaveTxt">حفظ المقدمة والملاحظات</button><button class="btn sec full" id="wNo">إغلاق</button></div>');
+  function draw(){ $('willBox').innerHTML = willHtml({done:done}); }
+  function keep(){ var p = $('wPre').value.trim(); o.willPre = (p && p!==WILL_PRE) ? p : ''; o.willNote = $('wNote').value.trim(); save(); }
+  $('wPre').oninput = $('wNote').oninput = function(){ keep(); draw(); };
+  $('wDone').onchange = function(){ done = $('wDone').checked; draw(); };
+  $('wNo').onclick = closeSheet;
+  $('wSaveTxt').onclick = function(){ keep(); toast('تم الحفظ'); };
+  if($('wPrint')) $('wPrint').onclick = function(){ keep(); $('print').innerHTML = willHtml({done:done}); window.print(); };
+  draw();
+}
+
+/* ============ التقرير الشهري التفصيلي للصرفيات ============ */
+function reportData(ym){
+  var ex = expOfMonth(ym).slice().sort(function(a,c){ return a.date.localeCompare(c.date); }), pc = planByCat(), tot = sumArr(ex);
+  var byCat = {};
+  ex.forEach(function(x){
+    var c = byCat[x.cat] = byCat[x.cat] || {k:x.cat, t:0, n:0, items:{}, ops:[]};
+    c.t = round2(c.t + x.amount); c.n++; c.ops.push(x);
+    var nm = x.item || 'بدون وصف', it = c.items[nm] = c.items[nm] || {nm:nm, t:0, n:0}; it.t = round2(it.t + x.amount); it.n++;
+  });
+  var cats = Object.keys(byCat).map(function(k){ var c = byCat[k]; c.items = Object.keys(c.items).map(function(z){ return c.items[z]; }).sort(function(a,b2){ return b2.t-a.t; }); c.p = pc[k]||0; return c; }).sort(function(a,c){ return c.t-a.t; });
+  var y = Number(ym.slice(0,4)), m = Number(ym.slice(5,7)), days = new Date(y, m, 0).getDate();
+  var cur = ym===today().slice(0,7), dCount = cur ? Number(today().slice(8,10)) : days;
+  var weeks = [0,0,0,0,0]; ex.forEach(function(x){ weeks[Math.min(4, Math.floor((Number(x.date.slice(8,10))-1)/7))] += x.amount; });
+  var fxc = 0; cats.forEach(function(c){ var ls = planLines(c.k); if(ls.length && ls.every(isFixedLine)) fxc += c.t; });
+  var paidDebt = 0, gotDebt = 0;
+  db.entries.forEach(function(e){ e.payments.forEach(function(py){ if(ymKey(py.date)===ym){ if(e.type==='li') gotDebt += py.amount; else paidDebt += py.amount; } }); });
+  return {ym:ym, ex:ex, tot:tot, cats:cats, inc:incActual(ym), pt:planTotal(), days:days, dCount:dCount, cur:cur, weeks:weeks.map(round2),
+    fx:round2(fxc), top:ex.slice().sort(function(a,c){ return c.amount-a.amount; }).slice(0,5), paidDebt:round2(paidDebt), gotDebt:round2(gotDebt)};
+}
+function reportHtml(ym){
+  var d = reportData(ym), o = owner(), net = round2(d.inc - d.tot);
+  function pct(a, b2){ return b2>0 ? Math.round(a/b2*100)+'%' : '—'; }
+  var h = '<div class="rep"><div class="rh"><h2>تقرير الصرفيات — '+monthLabel(ym)+'</h2><div>'+(o.name?esc(o.name)+' · ':'')+'صدر في '+fmtDate(today())+(d.cur?' · الشهر لم ينتهِ بعد، والأرقام حتى اليوم':'')+'</div></div>';
+  h += '<h3>أولًا: الخلاصة</h3><div class="kpis">'+
+    '<div>مجموع الصرف<b>'+money(d.tot)+'</b></div><div>الدخل الفعلي<b>'+money(d.inc)+'</b></div>'+
+    '<div>'+(net>=0?'الفائض':'العجز')+'<b class="'+(net>=0?'g':'r')+'">'+money(Math.abs(net))+'</b></div><div>نسبة الصرف من الدخل<b>'+pct(d.tot, d.inc)+'</b></div>'+
+    '<div>عدد العمليات<b>'+d.ex.length+'</b></div><div>متوسط الصرف اليومي<b>'+money(round2(d.tot/Math.max(1,d.dCount)))+'</b></div>'+
+    '<div>الخطة الشهرية<b>'+money(d.pt)+'</b></div><div>الفرق عن الخطة<b class="'+(d.tot>d.pt?'r':'g')+'">'+(d.tot>d.pt?'+':'')+money(round2(d.tot-d.pt))+'</b></div></div>';
+  if(d.paidDebt || d.gotDebt) h += '<div class="hint" style="margin-top:6px">حركة الحقوق في الشهر: سدّدت '+money(d.paidDebt)+' · استلمت '+money(d.gotDebt)+'</div>';
+  h += '<h3>ثانيًا: الصرف حسب الفئة</h3><div class="tw"><table><tr><th>الفئة</th><th class="n">المبلغ</th><th class="n">النسبة</th><th class="n">الخطة</th><th class="n">الفرق</th></tr>'+
+    d.cats.map(function(c){ var df = round2(c.t-c.p); return '<tr><td>'+catById(c.k).name+'</td><td class="n">'+money(c.t)+'</td><td class="n">'+pct(c.t, d.tot)+'</td><td class="n">'+(c.p?money(c.p):'—')+'</td><td class="n '+(c.p?(df>0?'r':'g'):'')+'">'+(c.p?(df>0?'+':'')+money(df):'بلا خطة')+'</td></tr>'; }).join('')+
+    '<tr class="sum"><td>المجموع</td><td class="n">'+money(d.tot)+'</td><td class="n">100%</td><td class="n">'+money(d.pt)+'</td><td class="n">'+(d.tot>d.pt?'+':'')+money(round2(d.tot-d.pt))+'</td></tr></table></div>';
+  if(d.fx>0) h += '<div class="hint" style="margin-top:6px">منها في فئات ثابتة: '+money(d.fx)+' · وفي فئات قابلة للتقليل: '+money(round2(d.tot-d.fx))+'</div>';
+  h += '<h3>ثالثًا: التفاصيل داخل كل فئة</h3>'+d.cats.map(function(c){
+    return '<div class="catblk"><div class="ch"><span>'+catById(c.k).name+'</span><span>'+money(c.t)+'</span></div>'+
+      '<div class="cm">'+countTxt(c.n,'عملية واحدة','عمليتان','عمليات','عملية')+' · '+pct(c.t, d.tot)+' من الصرف'+(c.p?' · الخطة '+money(c.p):'')+'</div>'+
+      '<table><tr><th>البند</th><th class="n">المرات</th><th class="n">المبلغ</th></tr>'+c.items.map(function(it){ return '<tr><td>'+esc(it.nm)+'</td><td class="n">'+it.n+'</td><td class="n">'+money(it.t)+'</td></tr>'; }).join('')+'</table>'+
+      '<details class="ops"><summary>العمليات بالتاريخ</summary>'+c.ops.map(function(x){ return '<div>'+fmtDate(x.date)+' — '+esc(x.item||'بدون وصف')+': <b>'+money(x.amount)+'</b></div>'; }).join('')+'</details></div>';
+  }).join('');
+  h += '<h3>رابعًا: الصرف حسب أسابيع الشهر</h3><table><tr><th>الأسبوع</th><th>الأيام</th><th class="n">المبلغ</th><th class="n">النسبة</th></tr>'+
+    d.weeks.map(function(w, i){ var a = i*7+1, b2 = i===4 ? d.days : Math.min(d.days, i*7+7); if(a>d.days) return ''; return '<tr><td>'+['الأول','الثاني','الثالث','الرابع','الخامس'][i]+'</td><td>'+a+' – '+b2+'</td><td class="n">'+money(w)+'</td><td class="n">'+pct(w, d.tot)+'</td></tr>'; }).join('')+'</table>';
+  h += '<h3>خامسًا: أكبر المصروفات</h3><table><tr><th>التاريخ</th><th>البند</th><th>الفئة</th><th class="n">المبلغ</th></tr>'+
+    d.top.map(function(x){ return '<tr><td>'+fmtDate(x.date)+'</td><td>'+esc(x.item||'بدون وصف')+'</td><td>'+catById(x.cat).name+'</td><td class="n">'+money(x.amount)+'</td></tr>'; }).join('')+'</table>';
+  var over = d.cats.filter(function(c){ return c.p>0 && c.t>c.p; }), noPlan = d.cats.filter(function(c){ return !c.p; });
+  h += '<h3>سادسًا: ملاحظات</h3><div>'+
+    (d.cats.length?'• أكثر ما صرفت عليه: «'+catById(d.cats[0].k).name+'» بنسبة '+pct(d.cats[0].t, d.tot)+'.<br>':'')+
+    (over.length?'• تجاوزت الخطة في: '+over.map(function(c){ return '«'+catById(c.k).name+'» (+'+money(round2(c.t-c.p))+')'; }).join('، ')+'.<br>':'• لم تتجاوز الخطة في أي فئة.<br>')+
+    (noPlan.length?'• فئات بلا بند في الخطة: '+noPlan.map(function(c){ return '«'+catById(c.k).name+'»'; }).join('، ')+'.<br>':'')+
+    (d.inc>0?'• '+(net>=0?'وفّرت '+money(net)+' ('+pct(net, d.inc)+' من الدخل).':'صرفت أكثر من دخلك بـ '+money(-net)+'.'):'')+'</div></div>';
+  return h;
+}
+function reportText(ym){
+  var d = reportData(ym), L = ['*تقرير الصرفيات — '+monthLabel(ym)+'*', 'صدر في '+fmtDate(today()), '', 'مجموع الصرف: '+money(d.tot), 'الدخل الفعلي: '+money(d.inc), 'الخطة الشهرية: '+money(d.pt), '', '*حسب الفئة:*'];
+  d.cats.forEach(function(c){
+    L.push('▪ '+catById(c.k).name+': '+money(c.t)+' ('+(d.tot?Math.round(c.t/d.tot*100):0)+'%)');
+    c.items.slice(0,5).forEach(function(it){ L.push('    - '+it.nm+': '+money(it.t)+(it.n>1?' ('+it.n+' مرات)':'')); });
+  });
+  return L;
+}
+function openReport(ym){
+  sheet('<div id="repBox">'+reportHtml(ym)+'</div>'+
+    '<div class="actions" style="margin-top:14px">'+(PREVIEW?'':'<button class="btn pri" id="rpPrint">طباعة / حفظ PDF</button>')+
+    '<a class="btn wa'+(PREVIEW?' full':'')+'" target="_blank" rel="noopener" href="https://wa.me/?text='+encodeURIComponent(reportText(ym).join('\n'))+'">مشاركة ملخص نصّي</a>'+
+    '<button class="btn sec full" id="rpNo">إغلاق</button></div>');
+  $('rpNo').onclick = closeSheet;
+  if($('rpPrint')) $('rpPrint').onclick = function(){ $('print').innerHTML = reportHtml(ym); window.print(); };
 }
 /* يوزّع المتبقي الشهري على الديون غير المجدولة بنسبة كل دين، وينشئ جدولة سريعة لكل شخص */
 function buildPlan(f){
@@ -2640,6 +2848,7 @@ function buildPlan(f){
 function renderSettings(){
   $('title').textContent = 'الإعدادات';
   $('app').innerHTML =
+    (db.entries.length?'<button class="will-btn" id="willBtn"><i>❖</i><span><b>وثيقة الحقوق المالية</b>كل ما لك وما عليك مع تفاصيل السداد، للوصية ونحوها، قابلة للطباعة والتوقيع والإشهاد.</span></button>':'')+
     '<div class="set" id="ownerSet"><h4>بياناتك</h4><p>تظهر في رسائل الواتساب وكشوف الحساب التي ترسلها.</p>'+
       '<div class="field"><label>اسمك</label><input id="oName" value="'+esc(owner().name||'')+'" placeholder="مثال: نصر بن محمد"></div>'+
       '<div class="field"><label>جوالك (اختياري)</label><input id="oPhone" type="tel" dir="ltr" value="'+esc(owner().phone||'')+'" placeholder="05xxxxxxxx"></div>'+
@@ -2661,7 +2870,7 @@ function renderSettings(){
       '<div class="actions"><button class="btn pri" id="exp">حفظ نسخة احتياطية</button><button class="btn sec" id="imp">استرجاع نسخة</button></div>'+
       '<input type="file" id="impFile" accept=".json,application/json" class="hidden"></div>')+
     '<div class="set"><h4>حذف كل البيانات</h4><p>يحذف كل الأشخاص والحقوق والدفعات من هذا الجوال نهائيًا.</p><button class="btn danger" id="wipe">حذف كل البيانات</button></div>'+
-    '<div class="hint" style="text-align:center;margin-top:16px">الحقوق المالية — الإصدار 16</div>';
+    '<div class="hint" style="text-align:center;margin-top:16px">الحقوق المالية — الإصدار 17</div>';
   function ownerPrev(){
     var tmp = {name:$('oName').value.trim(), phone:$('oPhone').value.trim(), sign:$('oSign').value.trim()}, keep = db.owner;
     db.owner = tmp; var sg = signLines(); db.owner = keep;
@@ -2673,6 +2882,7 @@ function renderSettings(){
     save(); toast('تم حفظ بياناتك');
   };
   bindSig();
+  if($('willBtn')) $('willBtn').onclick = openWill;
   $('chPin').onclick = function(){ showLock('change'); };
   $('lockNow').onclick = function(){ showLock('enter'); };
   bindDrive();
