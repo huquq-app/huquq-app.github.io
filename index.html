@@ -927,7 +927,7 @@ function renderPerson(){
     }
     html += '<div class="ebtns">'+
       (done?'':'<button class="smallbtn pri" data-add="'+e.id+'">+ إضافة مبلغ</button>')+
-      (done?'':'<button class="smallbtn pri" data-pay="'+e.id+'">سداد دفعة</button><button class="smallbtn pri" data-payfull="'+e.id+'">سداد كامل</button>')+
+      (done?'':'<button class="smallbtn pri" data-pay="'+e.id+'">'+(e.type==='li'?'استلام دفعة':'سداد دفعة')+'</button><button class="smallbtn pri" data-payfull="'+e.id+'">'+(e.type==='li'?'استلام كامل':'سداد كامل')+'</button>')+
       (!done && dueOf(e)?'<button class="smallbtn" data-cal="'+e.id+'">أضف للتقويم</button>':'')+
       '<button class="smallbtn" data-edit="'+e.id+'">تعديل</button>'+
       '<button class="smallbtn danger" data-del="'+e.id+'">حذف</button></div></div>';
@@ -1029,15 +1029,15 @@ function dueCard(p){
   var h = '';
   ['alay','li'].forEach(function(t){
     var d = dueInfo(p, t);
-    if(!d.es.length){ if(entriesOf(p.id).some(function(e){ return (t==='li' ? e.type==='li' : e.type!=='li') && e.payments.length; })) h += '<div class="ebtns" style="margin:-4px 0 14px"><button class="smallbtn" data-payhist="'+t+'">سجل السداد'+(t==='li'?' (لي عنده)':' (علي له)')+'</button></div>'; return; }
+    if(!d.es.length){ if(entriesOf(p.id).some(function(e){ return (t==='li' ? e.type==='li' : e.type!=='li') && e.payments.length; })) h += '<div class="ebtns" style="margin:-4px 0 14px"><button class="smallbtn" data-payhist="'+t+'">'+(t==='li'?'سجل الاستلام منه':'سجل السداد له')+'</button></div>'; return; }
     var me = t==='alay';
     h += '<div class="sched"><div class="sh"><h4>'+(me?'السداد له':'الاستلام منه')+'</h4></div><div class="line">'+
       (!d.next ? 'لا موعد محدد للسداد.' : d.now>0 ? '<span class="r">مستحق الآن: <b>'+money(d.now)+'</b></span>' :
         'أقرب موعد: <b>'+fmtDate(dueOf(d.next))+'</b> ('+whenLabel(dueOf(d.next))+') بمبلغ <b>'+money(d.nxAmt)+'</b>')+
       '<br>المتبقي كله'+(d.es.length>1?' في '+countTxt(d.es.length,'حق واحد','حقين','حقوق','حقًا'):'')+': <b>'+money(d.all)+'</b></div>'+
-      '<div class="ebtns"><button class="smallbtn pri" data-paydue="'+t+'">سداد دفعة'+(d.def>0?' ('+money(d.def)+')':'')+'</button>'+
-      '<button class="smallbtn pri" data-payall="'+t+'">سداد كامل ('+money(d.all)+')</button>'+
-      '<button class="smallbtn" data-payhist="'+t+'">سجل السداد</button></div></div>';
+      '<div class="ebtns"><button class="smallbtn pri" data-paydue="'+t+'">'+(me?'سداد دفعة':'استلام دفعة')+'</button>'+
+      '<button class="smallbtn pri" data-payall="'+t+'">'+(me?'سداد كامل':'استلام كامل')+' ('+money(d.all)+')</button>'+
+      '<button class="smallbtn" data-payhist="'+t+'">'+(me?'سجل السداد':'سجل الاستلام')+'</button></div></div>';
   });
   return h;
 }
@@ -1047,17 +1047,17 @@ function openPayAll(p, t, entryId){
   var es = entryId ? db.entries.filter(function(e){ return e.id===entryId; }) : dueInfo(p, t).es;
   var all = round2(es.reduce(function(a,e){ return a+Math.max(0,remaining(e)); },0)); if(!(all>0)) return;
   var li = es[0].type==='li';
-  sheet('<h3>سداد كامل</h3><p class="msg">'+(li?'استلمت من ':'سدّدت لـ ')+esc(p.name)+' كامل المتبقي: <b>'+money(all)+'</b>'+
+  sheet('<h3>'+(li?'استلام كامل':'سداد كامل')+'</h3><p class="msg">'+(li?'استلمت من ':'سدّدت لـ ')+esc(p.name)+' كامل المتبقي: <b>'+money(all)+'</b>'+
     (es.length>1?' في '+countTxt(es.length,'حق واحد','حقين','حقوق','حقًا'):'')+'، ويُغلق '+(es.length>1?'الجميع':'الحق')+' «مسدَّد ✓».</p>'+
     '<div class="field"><label>التاريخ</label><input id="faDate" type="date" value="'+today()+'"></div>'+
     '<div class="field"><label>ملاحظة (اختياري)</label><input id="faNote" placeholder="مثال: تحويل بنكي، نقدًا..."></div>'+
-    '<div class="actions"><button class="btn pri" id="faOk">تأكيد السداد الكامل</button><button class="btn sec" id="faNo">إلغاء</button></div>');
+    '<div class="actions"><button class="btn pri" id="faOk">'+(li?'تأكيد الاستلام الكامل':'تأكيد السداد الكامل')+'</button><button class="btn sec" id="faNo">إلغاء</button></div>');
   $('faNo').onclick = closeSheet;
   $('faOk').onclick = function(){
-    var date = $('faDate').value||today(), note = $('faNote').value.trim() || 'سداد كامل';
+    var date = $('faDate').value||today(), note = $('faNote').value.trim() || (li?'استلام كامل':'سداد كامل');
     var made = [];
     es.forEach(function(e){ var r = remaining(e); if(r>0){ var py = {id:uid(), amount:r, date:date, note:note}; e.payments.push(py); made.push({e:e, py:py}); } });
-    save(); closeSheet(); render(); toast('تم السداد بالكامل ✓');
+    save(); closeSheet(); render(); toast(li?'تم الاستلام بالكامل ✓':'تم السداد بالكامل ✓');
     if(li) offerReceipt(p, made);
   };
 }
@@ -1067,12 +1067,12 @@ function openPayHist(p, t){
   es.forEach(function(e){ e.payments.forEach(function(py){ list.push({py:py, e:e}); }); });
   list.sort(function(a,b){ return (b.py.date||'').localeCompare(a.py.date||''); });
   var sum = round2(list.reduce(function(a,x){ return a+x.py.amount; },0));
-  sheet('<h3>سجل السداد — '+esc(p.name)+'</h3>'+
+  sheet('<h3>'+(t==='li'?'سجل الاستلام من ':'سجل السداد لـ ')+esc(p.name)+'</h3>'+
     (list.length ? '<div class="hint" style="margin-bottom:8px">'+countTxt(list.length,'دفعة واحدة','دفعتان','دفعات','دفعة')+' · المجموع <b>'+money(sum)+'</b></div>'+
       '<div class="pays" style="margin:0">'+list.map(function(x){
         return '<div class="p"><span>'+fmtDate(x.py.date)+' — <b>'+money(x.py.amount)+'</b>'+(x.e.reason?' · '+esc(x.e.reason):'')+(x.py.note?' ('+esc(x.py.note)+')':'')+'</span>'+
           (t==='li'?'<button class="x rc" data-hr="'+x.e.id+'|'+x.py.id+'">وصل</button>':'')+'</div>';
-      }).join('')+'</div>' : '<p class="msg">لم يُسجَّل أي سداد بعد.</p>')+
+      }).join('')+'</div>' : '<p class="msg">'+(t==='li'?'لم يُسجَّل أي استلام بعد.':'لم يُسجَّل أي سداد بعد.')+'</p>')+
     '<div class="actions"><button class="btn pri full" id="phOk">إغلاق</button></div>');
   $('phOk').onclick = closeSheet;
   document.querySelectorAll('[data-hr]').forEach(function(b){ b.onclick = function(){
@@ -1081,10 +1081,11 @@ function openPayHist(p, t){
 }
 function openDuePay(p, t){
   var d = dueInfo(p, t), me = t==='alay';
-  sheet('<h3>سداد دفعة — '+esc(p.name)+'</h3><div class="hint" style="margin-bottom:12px;line-height:1.8">'+
+  sheet('<h3>'+(me?'سداد دفعة لـ ':'استلام دفعة من ')+esc(p.name)+'</h3><div class="hint" style="margin-bottom:12px;line-height:1.8">'+
     (d.now>0?'المستحق الآن: <b>'+money(d.now)+'</b><br>':'')+'المتبقي كله: <b>'+money(d.all)+'</b><br>يُوزَّع المبلغ على الحقوق حسب مواعيدها، الأقدم أولًا.</div>'+
     '<div class="err hidden" id="dpErr"></div>'+
-    '<div class="field"><label>المبلغ (ريال)</label><input id="dpAmount" type="number" inputmode="decimal" min="0" step="0.01" value="'+(d.def>0?round2(d.def):'')+'" placeholder="المتبقي '+round2(d.all)+'"></div>'+
+    '<div class="field"><label>المبلغ (ريال)</label><input id="dpAmount" type="number" inputmode="decimal" min="0" step="0.01" value="'+(d.def>0?round2(d.def):'')+'" placeholder="المتبقي '+round2(d.all)+'">'+
+    '<div class="hint">'+(d.def>0?'المقترح: '+money(d.def)+' ('+(d.now>0?'المستحق الآن':'القسط القادم')+') — غيّره إن شئت.':'اكتب المبلغ.')+'</div></div>'+
     '<div class="field"><label>التاريخ</label><input id="dpDate" type="date" value="'+today()+'"></div>'+
     '<div class="field"><label>ملاحظة (اختياري)</label><input id="dpNote" placeholder="مثال: تحويل بنكي، نقدًا..."></div>'+
     '<div class="actions"><button class="btn pri" id="dpOk">حفظ</button><button class="btn sec" id="dpNo">إلغاء</button></div>');
@@ -1524,13 +1525,14 @@ function openEntryForm(entryId, presetPersonId){
 function openPayForm(entryId){
   var e = db.entries.find(function(x){return x.id===entryId;}), r = remaining(e), nx = nextInst(e);
   var def = e.plan ? Math.min(r, dueAmount(e) || (nx?nx.rest:r)) : r;
-  sheet('<h3>سداد دفعة</h3><div class="hint" style="margin-bottom:12px;line-height:1.8">'+esc(e.reason||'')+' — المتبقي كله: <b>'+money(r)+'</b>'+
+  var LI = e.type==='li';
+  sheet('<h3>'+(LI?'استلام دفعة':'سداد دفعة')+'</h3><div class="hint" style="margin-bottom:12px;line-height:1.8">'+esc(e.reason||'')+' — المتبقي كله: <b>'+money(r)+'</b>'+
     (nx?'<br>القسط القادم ('+nx.n+' من '+nx.of+') بتاريخ '+fmtDate(nx.date)+': <b>'+money(nx.rest)+'</b>'+(def>nx.rest?'، ومع المتأخر: <b>'+money(def)+'</b>':''):'')+'</div>'+
     '<div class="err hidden" id="pErr"></div>'+
-    '<div class="field"><label>مبلغ الدفعة (ريال)</label><input id="pAmount" type="number" inputmode="decimal" min="0" step="0.01" value="'+round2(def)+'"></div>'+
-    '<div class="field"><label>تاريخ الدفعة</label><input id="pDate" type="date" value="'+today()+'"></div>'+
+    '<div class="field"><label>'+(LI?'المبلغ المستلم':'المبلغ المدفوع')+' (ريال)</label><input id="pAmount" type="number" inputmode="decimal" min="0" step="0.01" value="'+round2(def)+'"><div class="hint">المقترح: '+money(round2(def))+' — غيّره إن شئت.</div></div>'+
+    '<div class="field"><label>'+(LI?'تاريخ الاستلام':'تاريخ السداد')+'</label><input id="pDate" type="date" value="'+today()+'"></div>'+
     '<div class="field"><label>ملاحظة (اختياري)</label><input id="pNote" placeholder="مثال: تحويل بنكي، نقدًا..."></div>'+
-    '<div class="actions"><button class="btn pri" id="pSave">حفظ الدفعة</button><button class="btn sec" id="pCancel">إلغاء</button></div>');
+    '<div class="actions"><button class="btn pri" id="pSave">'+(LI?'حفظ الاستلام':'حفظ السداد')+'</button><button class="btn sec" id="pCancel">إلغاء</button></div>');
   $('pCancel').onclick = closeSheet;
   $('pSave').onclick = function(){
     var a = parseFloat($('pAmount').value), err=$('pErr');
@@ -1539,7 +1541,7 @@ function openPayForm(entryId){
     var py = {id:uid(), amount:round2(a), date:$('pDate').value||today(), note:$('pNote').value.trim()};
     e.payments.push(py);
     save(); closeSheet(); render();
-    toast(remaining(e)<=0 ? 'تم السداد بالكامل ✓' : 'تم تسجيل الدفعة');
+    toast(remaining(e)<=0 ? (LI?'تم الاستلام بالكامل ✓':'تم السداد بالكامل ✓') : (LI?'تم تسجيل الاستلام':'تم تسجيل السداد'));
     if(e.type==='li') offerReceipt(personById(e.personId), [{e:e, py:py}]);
   };
 }
