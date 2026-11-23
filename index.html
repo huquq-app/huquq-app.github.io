@@ -141,6 +141,7 @@ main{max-width:640px;margin:0 auto;padding-block:16px;padding-left:max(16px,env(
 .pays{margin-top:12px;border-top:1px dashed var(--line);padding-top:8px}
 .pays .p{display:flex;align-items:center;gap:8px;font-size:14px;padding:5px 0}
 .pays .p span{flex:1}
+.pays .x.rc{color:var(--brand-ink);background:var(--tint);font-weight:700}
 .pays .x,.items .it .x{color:var(--red);font-size:13px;padding:4px 8px;border-radius:8px}
 .ebtns{display:flex;gap:6px;flex-wrap:wrap;margin-top:12px;padding-top:12px;border-top:1px solid var(--line)}
 
@@ -920,6 +921,7 @@ function renderPerson(){
       html += '<div class="pays"><div class="hint" style="margin-bottom:4px">الدفعات:</div>'+
         e.payments.slice().sort(function(a,b){return (a.date||'').localeCompare(b.date||'');}).map(function(py){
           return '<div class="p"><span>'+fmtDate(py.date)+' — <b>'+money(py.amount)+'</b>'+(py.note?' ('+esc(py.note)+')':'')+'</span>'+
+            (e.type==='li'?'<button class="x rc" data-rcpt="'+e.id+'|'+py.id+'">وصل</button>':'')+
             '<button class="x" data-delpay="'+e.id+'|'+py.id+'">حذف</button></div>';
         }).join('')+'</div>';
     }
@@ -936,6 +938,10 @@ function renderPerson(){
   document.querySelectorAll('[data-paydue]').forEach(function(b){ b.onclick = function(){ openDuePay(p, b.dataset.paydue); }; });
   document.querySelectorAll('[data-payall]').forEach(function(b){ b.onclick = function(){ openPayAll(p, b.dataset.payall); }; });
   document.querySelectorAll('[data-payhist]').forEach(function(b){ b.onclick = function(){ openPayHist(p, b.dataset.payhist); }; });
+  document.querySelectorAll('[data-rcpt]').forEach(function(b){ b.onclick = function(){
+    var ids = b.dataset.rcpt.split('|'), e = db.entries.find(function(x){ return x.id===ids[0]; }); if(!e) return;
+    var py = e.payments.find(function(x){ return x.id===ids[1]; }); if(py) openReceipt(p, [{e:e, py:py}]);
+  }; });
   document.querySelectorAll('[data-payfull]').forEach(function(b){ b.onclick = function(){ openPayAll(p, null, b.dataset.payfull); }; });
   $('addE').onclick = function(){ openEntryForm(null, p.id); };
   if($('prBtn')) $('prBtn').onclick = function(){ printStatement(p); };
@@ -1049,8 +1055,10 @@ function openPayAll(p, t, entryId){
   $('faNo').onclick = closeSheet;
   $('faOk').onclick = function(){
     var date = $('faDate').value||today(), note = $('faNote').value.trim() || 'سداد كامل';
-    es.forEach(function(e){ var r = remaining(e); if(r>0) e.payments.push({id:uid(), amount:r, date:date, note:note}); });
+    var made = [];
+    es.forEach(function(e){ var r = remaining(e); if(r>0){ var py = {id:uid(), amount:r, date:date, note:note}; e.payments.push(py); made.push({e:e, py:py}); } });
     save(); closeSheet(); render(); toast('تم السداد بالكامل ✓');
+    if(li) offerReceipt(p, made);
   };
 }
 /* سجل السداد: كل الدفعات مع الشخص من هذا النوع، الأحدث أولًا */
@@ -1062,10 +1070,14 @@ function openPayHist(p, t){
   sheet('<h3>سجل السداد — '+esc(p.name)+'</h3>'+
     (list.length ? '<div class="hint" style="margin-bottom:8px">'+countTxt(list.length,'دفعة واحدة','دفعتان','دفعات','دفعة')+' · المجموع <b>'+money(sum)+'</b></div>'+
       '<div class="pays" style="margin:0">'+list.map(function(x){
-        return '<div class="p"><span>'+fmtDate(x.py.date)+' — <b>'+money(x.py.amount)+'</b>'+(x.e.reason?' · '+esc(x.e.reason):'')+(x.py.note?' ('+esc(x.py.note)+')':'')+'</span></div>';
+        return '<div class="p"><span>'+fmtDate(x.py.date)+' — <b>'+money(x.py.amount)+'</b>'+(x.e.reason?' · '+esc(x.e.reason):'')+(x.py.note?' ('+esc(x.py.note)+')':'')+'</span>'+
+          (t==='li'?'<button class="x rc" data-hr="'+x.e.id+'|'+x.py.id+'">وصل</button>':'')+'</div>';
       }).join('')+'</div>' : '<p class="msg">لم يُسجَّل أي سداد بعد.</p>')+
     '<div class="actions"><button class="btn pri full" id="phOk">إغلاق</button></div>');
   $('phOk').onclick = closeSheet;
+  document.querySelectorAll('[data-hr]').forEach(function(b){ b.onclick = function(){
+    var ids = b.dataset.hr.split('|'), x = list.find(function(y){ return y.e.id===ids[0] && y.py.id===ids[1]; }); if(x) openReceipt(p, [x]);
+  }; });
 }
 function openDuePay(p, t){
   var d = dueInfo(p, t), me = t==='alay';
@@ -1084,10 +1096,12 @@ function openDuePay(p, t){
     var left = a, date = $('dpDate').value||today(), note = $('dpNote').value.trim();
     var order = d.dated.concat(d.es.filter(function(e){ return d.dated.indexOf(e)<0; }));
     var lim = d.now>0 ? today() : (d.next ? dueOf(d.next) : today());
-    function put(e, cap){ var x = round2(Math.min(cap, remaining(e), left)); if(x>0){ e.payments.push({id:uid(), amount:x, date:date, note:note}); left = round2(left-x); } }
+    var made = [];
+    function put(e, cap){ var x = round2(Math.min(cap, remaining(e), left)); if(x>0){ var py = {id:uid(), amount:x, date:date, note:note}; e.payments.push(py); made.push({e:e, py:py}); left = round2(left-x); } }
     d.dated.forEach(function(e){ if(left>0 && dueOf(e)<=lim) put(e, dueAmount(e)); });
     order.forEach(function(e){ if(left>0) put(e, remaining(e)); });
     save(); closeSheet(); render(); toast('تم التسجيل');
+    if(t==='li') offerReceipt(p, made);
   };
 }
 function schedCard(p){
@@ -1522,9 +1536,11 @@ function openPayForm(entryId){
     var a = parseFloat($('pAmount').value), err=$('pErr');
     if(!(a>0)){ err.textContent='اكتب مبلغًا صحيحًا.'; err.classList.remove('hidden'); return; }
     if(round2(a) > r){ err.textContent='المبلغ أكبر من المتبقي ('+money(r)+').'; err.classList.remove('hidden'); return; }
-    e.payments.push({id:uid(), amount:round2(a), date:$('pDate').value||today(), note:$('pNote').value.trim()});
+    var py = {id:uid(), amount:round2(a), date:$('pDate').value||today(), note:$('pNote').value.trim()};
+    e.payments.push(py);
     save(); closeSheet(); render();
     toast(remaining(e)<=0 ? 'تم السداد بالكامل ✓' : 'تم تسجيل الدفعة');
+    if(e.type==='li') offerReceipt(personById(e.personId), [{e:e, py:py}]);
   };
 }
 
@@ -2016,8 +2032,9 @@ function bindSig(){
 
 /* ============ الكشف الموقّع صورةً ============ */
 function loadImg(src){ return new Promise(function(res){ if(!src) return res(null); var i = new Image(); i.onload = function(){ res(i); }; i.onerror = function(){ res(null); }; i.src = src; }); }
-function statementCanvas(p){
-  var W = 1080, PAD = 64, lines = waLines(p);
+function statementCanvas(p, opt){
+  opt = opt || {};
+  var W = 1080, PAD = 64, lines = opt.lines || waLines(p), TITLE = opt.title || 'كشف الحقوق المالية بيننا';
   var FT = '"IBM Plex Sans Arabic","Segoe UI",Tahoma,Arial,sans-serif', FH = '"Noto Kufi Arabic","IBM Plex Sans Arabic","Segoe UI",Tahoma,sans-serif';
   var meas = document.createElement('canvas').getContext('2d');
   function font(sz, bold, head){ return (bold?'700 ':'400 ')+sz+'px '+(head?FH:FT); }
@@ -2032,7 +2049,7 @@ function statementCanvas(p){
     if(raw===WA_LINE){ items.push({rule:true, y:y+14}); y += 30; return; }
     if(raw===''){ y += 16; return; }
     var bold = /^\*.*\*$/.test(raw.trim()), t = raw.replace(/\*/g,'').trim(), ind = /^\s+▪/.test(raw);
-    var title = t==='كشف الحقوق المالية بيننا';
+    var title = t===TITLE;
     var sz = title ? 46 : bold ? 32 : 30, f = font(sz, bold||title, bold||title);
     wrap(t, f, W-2*PAD-(ind?40:0)).forEach(function(seg){ items.push({t:seg, f:f, y:y, ind:ind, title:title, color: title?'#0d4a3e':bold?'#18241f':'#3d4c46'}); y += Math.round(sz*1.55); });
   });
@@ -2048,7 +2065,7 @@ function statementCanvas(p){
     x.fillStyle = '#c99a3a'; x.fillRect(0,HEAD,W,6);
     if(icon) x.drawImage(icon, W-PAD-86, 32, 86, 86);
     x.textAlign = 'right'; x.fillStyle = '#ffffff'; x.font = font(44,true,true); x.fillText('الحقوق المالية', W-PAD-110, 78);
-    x.font = font(26,false); x.fillStyle = 'rgba(255,255,255,.8)'; x.fillText('كشف حساب مع '+p.name+' · '+fmtDate(today()), W-PAD-110, 120);
+    x.font = font(26,false); x.fillStyle = 'rgba(255,255,255,.8)'; x.fillText(opt.sub || ('كشف حساب مع '+p.name+' · '+fmtDate(today())), W-PAD-110, 120);
     var top = HEAD + 50;
     items.forEach(function(it){
       if(it.rule){ x.fillStyle = '#d9ddd5'; x.fillRect(PAD, top+it.y, W-2*PAD, 2); return; }
@@ -2080,6 +2097,72 @@ function openSignedStatement(p){
         } else {
           info('هذا الجهاز لا يدعم المشاركة المباشرة. اضغط «حفظ الصورة» ثم أرسلها من واتساب كصورة.');
         }
+      }, 'image/png');
+    };
+  });
+}
+
+/* ============ وصل الاستلام ============
+   pays = [{e, py}] دفعات استلمتها (حقوق «لي عنده»)، وقد تكون موزّعة على أكثر من حق */
+var RCPT_TITLE = 'وصل استلام';
+function receiptNo(pays){ return 'R-'+pays[0].py.date.replace(/-/g,'').slice(2)+'-'+pays[0].py.id.slice(-4).toUpperCase(); }
+function receiptLines(p, pays){
+  var amt = round2(pays.reduce(function(a,x){ return a+x.py.amount; },0)), date = pays[0].py.date, o = owner();
+  var L = ['السلام عليكم ورحمة الله وبركاته', '', '*'+RCPT_TITLE+'*', 'رقم الوصل: '+receiptNo(pays), 'تاريخ الاستلام: '+fmtDate(date), ''];
+  L.push((o.name ? 'أقرّ أنا '+o.name+' بأنني' : 'أقرّ بأنني')+' استلمت من '+p.name);
+  L.push('*مبلغًا قدره: '+money(amt)+'*');
+  if(pays.length===1){
+    if(pays[0].e.reason) L.push('وذلك عن: '+pays[0].e.reason);
+  } else {
+    L.push('موزّعًا على:'); pays.forEach(function(x){ L.push('   ▪ '+(x.e.reason||'حق مالي')+': '+money(x.py.amount)); });
+  }
+  if(pays[0].py.note) L.push('ملاحظة: '+pays[0].py.note);
+  // الوضع بعد هذا الاستلام (حتى تاريخه)
+  var es = []; pays.forEach(function(x){ if(es.indexOf(x.e)<0) es.push(x.e); });
+  function paidUntil(e){ return round2(e.payments.filter(function(q){ return q.date<=date; }).reduce(function(a,q){ return a+q.amount; },0)); }
+  var tot = round2(es.reduce(function(a,e){ return a+total(e); },0)), pd = round2(es.reduce(function(a,e){ return a+paidUntil(e); },0)), rest = round2(tot-pd);
+  L.push('', WA_LINE, 'إجمالي '+(es.length>1?'الحقوق':'الحق')+': '+money(tot), 'المسدَّد حتى تاريخه: '+money(pd));
+  L.push(rest<=0.004 ? '*تم السداد بالكامل، ولا يبقى شيء ✓*' : '*المتبقي: '+money(rest)+'*');
+  L.push(WA_LINE, '', 'وجزاك الله خيرًا.');
+  var sg = signLines(); if(sg.length){ L.push(''); L = L.concat(sg); }
+  return L;
+}
+/* بعد تسجيل استلام: اقتراح إرسال الوصل */
+function offerReceipt(p, pays){
+  if(!pays || !pays.length) return;
+  setTimeout(function(){
+    var amt = round2(pays.reduce(function(a,x){ return a+x.py.amount; },0));
+    sheet('<h3>تم تسجيل الاستلام ✓</h3><p class="msg">استلمت من '+esc(p.name)+' <b>'+money(amt)+'</b>. هل تريد إرسال وصل استلام له؟</p>'+
+      '<div class="actions"><button class="btn pri full" id="orYes">نعم، أنشئ الوصل</button><button class="btn sec full" id="orNo">لاحقًا</button></div>'+
+      '<div class="hint" style="margin-top:8px">تجد الوصل لاحقًا بزر «وصل» بجانب الدفعة.</div>');
+    $('orNo').onclick = closeSheet;
+    $('orYes').onclick = function(){ openReceipt(p, pays); };
+  }, 350);
+}
+function openReceipt(p, pays){
+  var L = receiptLines(p, pays), no = receiptNo(pays);
+  var wa = 'https://wa.me/'+waPhone(p.phone)+'?text='+encodeURIComponent(L.join('\n'));
+  if(PREVIEW){
+    sheet('<h3>'+RCPT_TITLE+' — '+esc(p.name)+'</h3><pre class="msg" style="white-space:pre-wrap;font-family:inherit">'+esc(L.join('\n').replace(/\*/g,''))+'</pre>'+
+      '<div class="actions"><a class="btn wa full" target="_blank" rel="noopener" href="'+esc(wa)+'">إرسال نصًّا بالواتساب</a><button class="btn sec full" id="rcNo">إغلاق</button></div>');
+    $('rcNo').onclick = closeSheet; return;
+  }
+  toast('جارٍ تجهيز الوصل...');
+  statementCanvas(p, {lines:L, title:RCPT_TITLE, sub:'وصل استلام رقم '+no+' · '+fmtDate(pays[0].py.date)}).then(function(c){
+    var url = c.toDataURL('image/png');
+    sheet('<h3>'+RCPT_TITLE+' — '+esc(p.name)+'</h3><img class="stmt-prev" src="'+url+'" alt="الوصل">'+
+      (owner().sigImg?'':'<div class="hint" style="margin-bottom:10px">لم تُضف توقيعك بخط اليد بعد — من الإعدادات ⚙ ← بياناتك.</div>')+
+      '<div class="actions"><button class="btn wa full" id="rcShare">مشاركة الوصل صورةً (واتساب وغيره)</button>'+
+      '<a class="btn sec" target="_blank" rel="noopener" href="'+esc(wa)+'">إرسال نصًّا</a><button class="btn sec" id="rcSave">حفظ الصورة</button>'+
+      '<button class="btn sec full" id="rcNo">إغلاق</button></div>');
+    $('rcNo').onclick = closeSheet;
+    function fileName(){ return 'وصل-استلام-'+p.name+'-'+no+'.png'; }
+    $('rcSave').onclick = function(){ var a = document.createElement('a'); a.href = url; a.download = fileName(); document.body.appendChild(a); a.click(); a.remove(); };
+    $('rcShare').onclick = function(){
+      c.toBlob(function(blob){
+        var file = new File([blob], fileName(), {type:'image/png'});
+        if(navigator.canShare && navigator.canShare({files:[file]})) navigator.share({files:[file], title:RCPT_TITLE, text:'وصل استلام'}).catch(function(){});
+        else info('هذا الجهاز لا يدعم المشاركة المباشرة. اضغط «حفظ الصورة» ثم أرسلها من واتساب كصورة، أو اضغط «إرسال نصًّا».');
       }, 'image/png');
     };
   });
@@ -2576,7 +2659,7 @@ function renderSettings(){
       '<div class="actions"><button class="btn pri" id="exp">حفظ نسخة احتياطية</button><button class="btn sec" id="imp">استرجاع نسخة</button></div>'+
       '<input type="file" id="impFile" accept=".json,application/json" class="hidden"></div>')+
     '<div class="set"><h4>حذف كل البيانات</h4><p>يحذف كل الأشخاص والحقوق والدفعات من هذا الجوال نهائيًا.</p><button class="btn danger" id="wipe">حذف كل البيانات</button></div>'+
-    '<div class="hint" style="text-align:center;margin-top:16px">الحقوق المالية — الإصدار 15</div>';
+    '<div class="hint" style="text-align:center;margin-top:16px">الحقوق المالية — الإصدار 16</div>';
   function ownerPrev(){
     var tmp = {name:$('oName').value.trim(), phone:$('oPhone').value.trim(), sign:$('oSign').value.trim()}, keep = db.owner;
     db.owner = tmp; var sg = signLines(); db.owner = keep;
