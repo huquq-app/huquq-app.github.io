@@ -129,6 +129,15 @@ main{max-width:640px;margin:0 auto;padding:14px 16px}
 .inst .row span:first-child{flex:1}
 .toggle button.on.pl{border-color:var(--brand2);background:var(--tint);color:var(--brand-ink)}
 .calbtns{display:grid;gap:8px;margin-top:14px}
+.items{margin-top:10px;border:1px solid var(--line);border-radius:12px;background:var(--soft2);padding:4px 12px}
+.items summary{cursor:pointer;font-size:14px;font-weight:700;padding:8px 0;display:flex;justify-content:space-between;gap:8px}
+.items summary b{font-variant-numeric:tabular-nums}
+.items .it{display:flex;align-items:center;gap:8px;font-size:14px;padding:7px 0;border-top:1px dashed var(--line)}
+.items .it span{flex:1;min-width:0}
+.items .it .d{color:var(--muted);font-size:12px;white-space:nowrap}
+.items .it b{white-space:nowrap;font-variant-numeric:tabular-nums}
+.items .it .x{color:var(--red);font-size:13px;padding:2px 6px}
+.breakdown{font-size:13px;color:var(--muted);margin:-4px 0 8px;text-align:center}
 .drv{display:flex;align-items:center;gap:8px;font-size:14px;margin-bottom:10px;line-height:1.7}
 .drv .dot{width:10px;height:10px;border-radius:50%;background:var(--muted);flex:none}
 .drv .dot.on{background:var(--green)}
@@ -246,7 +255,10 @@ function toast(msg){
 
 /* ============ الحسابات ============ */
 function paid(e){ return round2(e.payments.reduce(function(s,p){return s+p.amount;},0)); }
-function remaining(e){ return round2(e.amount - paid(e)); }
+/* e.items = [{id, date, desc, amount}] إضافات على المبلغ الأول (مثل مشتريات متتابعة) */
+function itemsSum(e){ return round2((e.items||[]).reduce(function(a,x){ return a+x.amount; },0)); }
+function total(e){ return round2(e.amount + itemsSum(e)); }
+function remaining(e){ return round2(total(e) - paid(e)); }
 /* الأقساط: e.plan = {count, freq:'monthly'|'weekly', start:'YYYY-MM-DD'} — الجدول يُحسب ولا يُخزَّن،
    والدفعات تُوزَّع على الأقساط بالترتيب (الأقدم أولًا) */
 function addPeriod(start, i, freq){
@@ -259,9 +271,9 @@ function addPeriod(start, i, freq){
 function addDays(s, n){ var p = s.split('-').map(Number); return new Date(Date.UTC(p[0],p[1]-1,p[2]+n)).toISOString().slice(0,10); }
 function installments(e){
   if(!e.plan) return null;
-  var n = e.plan.count, base = Math.floor(e.amount/n*100)/100, left = paid(e), list = [];
+  var n = e.plan.count, base = Math.floor(total(e)/n*100)/100, left = paid(e), list = [];
   for(var i=0;i<n;i++){
-    var amt = i===n-1 ? round2(e.amount - base*(n-1)) : base;
+    var amt = i===n-1 ? round2(total(e) - base*(n-1)) : base;
     var cov = round2(Math.min(amt, Math.max(0,left))); left = round2(left-amt);
     list.push({n:i+1, of:n, date:addPeriod(e.plan.start,i,e.plan.freq), amount:amt, paid:cov, rest:round2(amt-cov)});
   }
@@ -452,17 +464,18 @@ function renderPerson(){
   es.forEach(function(e){
     var r = remaining(e), pd = paid(e), done = r<=0;
     if(done && !shownDone){ html += '<div class="sec-title">مسدَّدة بالكامل</div>'; shownDone=true; }
-    var pct = e.amount>0 ? Math.min(100, pd/e.amount*100) : 0;
+    var tt = total(e), pct = tt>0 ? Math.min(100, pd/tt*100) : 0;
     html += '<div class="entry'+(done?' done':'')+'"><div class="t">'+
       '<span class="badge '+e.type+'">'+(e.type==='li'?'لي عنده':'علي له')+'</span>'+
       '<span class="reason">'+esc(e.reason||'بدون وصف')+'</span>'+
       (done?'<span class="badge ok">مسدَّد ✓</span>':'')+(isLate(e)?'<span class="badge late">متأخر</span>':'')+
     '</div>'+
-    '<div class="nums"><div><small>المبلغ</small><b>'+money(e.amount)+'</b></div>'+
+    '<div class="nums"><div><small>'+((e.items||[]).length?'المجموع':'المبلغ')+'</small><b>'+money(tt)+'</b></div>'+
       '<div><small>المسدَّد</small><b>'+money(pd)+'</b></div>'+
       '<div><small>المتبقي</small><b class="'+(r>0?(e.type==='li'?'g':'r'):'')+'">'+money(Math.max(0,r))+'</b></div></div>'+
+    ((e.items||[]).length?'<div class="breakdown">المبلغ الأول '+money(e.amount)+' + الإضافات '+money(itemsSum(e))+'</div>':'')+
     '<div class="bar"><i style="width:'+pct+'%"></i></div>'+
-    '<div class="dates">'+datesLine(e)+'</div>'+
+    '<div class="dates">'+datesLine(e)+'</div>'+itemsList(e)+
     (e.notes?'<div class="notes">'+esc(e.notes)+'</div>':'')+instTable(e);
     if(e.payments.length){
       html += '<div class="pays"><div class="hint" style="margin-bottom:4px">الدفعات:</div>'+
@@ -472,6 +485,7 @@ function renderPerson(){
         }).join('')+'</div>';
     }
     html += '<div class="ebtns">'+
+      '<button class="smallbtn pri" data-add="'+e.id+'">+ إضافة مبلغ</button>'+
       (done?'':'<button class="smallbtn pri" data-pay="'+e.id+'">تسجيل دفعة</button>')+
       (!done && dueOf(e)?'<button class="smallbtn" data-cal="'+e.id+'">أضف للتقويم</button>':'')+
       '<button class="smallbtn" data-edit="'+e.id+'">تعديل</button>'+
@@ -490,6 +504,16 @@ function renderPerson(){
       db.entries = db.entries.filter(function(e){return e.id!==b.dataset.del;}); cleanupPeople(); save(); render(); toast('تم الحذف');
     });
   }; });
+  document.querySelectorAll('[data-add]').forEach(function(b){ b.onclick=function(){ openItemForm(b.dataset.add); }; });
+  document.querySelectorAll('[data-delitem]').forEach(function(b){ b.onclick=function(){
+    var ids = b.dataset.delitem.split('|'), e = db.entries.find(function(x){return x.id===ids[0];});
+    if(!e) return;
+    var it = (e.items||[]).find(function(x){return x.id===ids[1];}); if(!it) return;
+    if(round2(total(e) - it.amount) < paid(e)) return info('لا يمكن حذف هذه الإضافة لأن المسدَّد ('+money(paid(e))+') سيصبح أكبر من المجموع. احذف دفعة أولًا.');
+    ask('هل تريد حذف «'+(it.desc||'إضافة')+'» بمبلغ '+money(it.amount)+'؟', 'نعم، احذف', function(){
+      e.items = e.items.filter(function(x){return x.id!==ids[1];}); save(); render(); toast('تم حذف الإضافة');
+    });
+  }; });
   document.querySelectorAll('[data-delpay]').forEach(function(b){ b.onclick=function(){
     var ids = b.dataset.delpay.split('|'), e = db.entries.find(function(x){return x.id===ids[0];});
     if(!e) return;
@@ -499,6 +523,47 @@ function renderPerson(){
   }; });
 }
 
+function itemsList(e){
+  var its = (e.items||[]); if(!its.length) return '';
+  var sorted = its.slice().sort(function(a,b){ return (a.date||'').localeCompare(b.date||''); });
+  return '<details class="items" open><summary><span>سجل الإضافات ('+countTxt(its.length,'إضافة واحدة','إضافتان','إضافات','إضافة')+')</span><b>'+money(itemsSum(e))+'</b></summary>'+
+    '<div class="it"><span>المبلغ الأول'+(e.reason?' · '+esc(e.reason):'')+'</span><span class="d">'+fmtDate(e.date)+'</span><b>'+money(e.amount)+'</b><span style="width:34px;flex:none"></span></div>'+
+    sorted.map(function(x){
+      return '<div class="it"><span>'+esc(x.desc||'إضافة')+'</span><span class="d">'+fmtDate(x.date)+'</span><b>'+money(x.amount)+'</b>'+
+        '<button class="x" data-delitem="'+e.id+'|'+x.id+'" aria-label="حذف">حذف</button></div>';
+    }).join('')+
+    '<div class="it"><span><b>المجموع</b></span><b>'+money(total(e))+'</b><span style="width:34px;flex:none"></span></div></details>';
+}
+function openItemForm(entryId){
+  var e = db.entries.find(function(x){return x.id===entryId;}), p = personById(e.personId);
+  var lastDesc = (e.items||[]).length ? e.items[e.items.length-1].desc : '';
+  sheet('<h3>إضافة مبلغ</h3><div class="hint" style="margin-bottom:12px;line-height:1.8">'+(e.type==='li'?'لي عند ':'علي لـ ')+esc(p.name)+(e.reason?' · '+esc(e.reason):'')+
+      '<br>المجموع الحالي: <b>'+money(total(e))+'</b></div>'+
+    '<div class="err hidden" id="iErr"></div>'+
+    '<div class="field"><label>الوصف</label><input id="iDesc" value="'+esc(lastDesc)+'" placeholder="مثال: مشتريات، بقالة، وقود..."></div>'+
+    '<div class="two"><div class="field"><label>المبلغ (ريال)</label><input id="iAmount" type="number" inputmode="decimal" min="0" step="0.01"></div>'+
+      '<div class="field"><label>التاريخ</label><input id="iDate" type="date" value="'+today()+'"></div></div>'+
+    '<div class="hint" id="iHint" style="margin:-4px 0 10px"></div>'+
+    '<div class="actions"><button class="btn pri" id="iSave">حفظ</button><button class="btn sec" id="iMore">حفظ وإضافة أخرى</button>'+
+      '<button class="btn sec full" id="iCancel">إغلاق</button></div>');
+  function hint(){ var a = parseFloat($('iAmount').value); $('iHint').textContent = a>0 ? 'المجموع بعد الإضافة: '+money(total(e)+a) : ''; }
+  $('iAmount').addEventListener('input', hint);
+  $('iCancel').onclick = function(){ closeSheet(); render(); };
+  function store(){
+    var a = parseFloat($('iAmount').value), err = $('iErr');
+    if(!(a>0)){ err.textContent='اكتب مبلغًا صحيحًا أكبر من صفر.'; err.classList.remove('hidden'); return false; }
+    if(!e.items) e.items = [];
+    e.items.push({id:uid(), date:$('iDate').value||today(), desc:$('iDesc').value.trim(), amount:round2(a)});
+    save(); return true;
+  }
+  $('iSave').onclick = function(){ if(!store()) return; closeSheet(); render(); toast('تمت الإضافة، المجموع '+money(total(e))); };
+  $('iMore').onclick = function(){
+    if(!store()) return;
+    toast('تمت الإضافة، المجموع '+money(total(e)));
+    var d = $('iDesc').value, dt = $('iDate').value;
+    openItemForm(e.id); $('iDesc').value = d; $('iDate').value = dt; $('iAmount').focus();
+  };
+}
 function datesLine(e){
   var h = 'تاريخ الحق: '+fmtDate(e.date), d = dueOf(e);
   if(e.plan){
@@ -556,7 +621,7 @@ function openEntryForm(entryId, presetPersonId){
       '<button type="button" class="alay'+(type==='alay'?' on':'')+'" data-t="alay">علي له (أدين به)</button></div></div>'+
     '<div class="field"><label>اسم الشخص</label><input id="fName" list="namesList" autocomplete="off" value="'+esc(p?p.name:'')+'" placeholder="اكتب الاسم أو اختر من القائمة"><datalist id="namesList">'+names+'</datalist></div>'+
     '<div class="field" id="phoneWrap"><label>رقم جواله (اختياري — لإرسال واتساب)</label><input id="fPhone" type="tel" inputmode="tel" dir="ltr" placeholder="05xxxxxxxx" value="'+esc(p?p.phone||'':'')+'"></div>'+
-    '<div class="field"><label>المبلغ (ريال)</label><input id="fAmount" type="number" inputmode="decimal" min="0" step="0.01" value="'+(e?e.amount:'')+'"></div>'+
+    '<div class="field"><label>'+(e&&(e.items||[]).length?'المبلغ الأول (ريال) — الإضافات '+money(itemsSum(e))+' تُجمع عليه':'المبلغ (ريال)')+'</label><input id="fAmount" type="number" inputmode="decimal" min="0" step="0.01" value="'+(e?e.amount:'')+'"></div>'+
     '<div class="field"><label>السبب / الوصف</label><input id="fReason" value="'+esc(e?e.reason:'')+'" placeholder="مثال: قرض، ثمن سيارة، إيجار..."></div>'+
     '<div class="field"><label>طريقة السداد</label><div class="toggle" id="planTg">'+
       '<button type="button" class="pl'+(plan?'':' on')+'" data-m="once">دفعة واحدة</button>'+
@@ -577,7 +642,7 @@ function openEntryForm(entryId, presetPersonId){
   }; });
   function syncPlan(){
     $('planBox').classList.toggle('hidden', !usePlan); $('dueWrap').classList.toggle('hidden', usePlan);
-    var a = parseFloat($('fAmount').value), n = parseInt($('fCount').value,10);
+    var a = parseFloat($('fAmount').value) + (e ? itemsSum(e) : 0), n = parseInt($('fCount').value,10);
     $('planHint').textContent = (usePlan && a>0 && n>=2) ? 'قيمة القسط: '+money(Math.floor(a/n*100)/100)+' '+($('fFreq').value==='weekly'?'كل أسبوع':'كل شهر')+'، وآخر قسط بتاريخ '+fmtDate(addPeriod($('fStart').value||today(), n-1, $('fFreq').value)) : '';
   }
   document.querySelectorAll('#planTg button').forEach(function(b){ b.onclick=function(){
@@ -595,7 +660,7 @@ function openEntryForm(entryId, presetPersonId){
     function fail(m){ err.textContent=m; err.classList.remove('hidden'); }
     if(!name) return fail('اكتب اسم الشخص.');
     if(!(amount>0)) return fail('اكتب مبلغًا صحيحًا أكبر من صفر.');
-    if(e && amount < paid(e)) return fail('المبلغ أقل من المسدَّد ('+money(paid(e))+'). احذف بعض الدفعات أولًا.');
+    if(e && round2(amount + itemsSum(e)) < paid(e)) return fail('المجموع سيصبح أقل من المسدَّد ('+money(paid(e))+'). احذف بعض الدفعات أولًا.');
     var newPlan = null;
     if(usePlan){
       var cnt = parseInt($('fCount').value,10);
@@ -682,7 +747,14 @@ function waUrl(p){
   var lines = ['السلام عليكم ورحمة الله وبركاته','','ملخص الحقوق المالية بيننا:'];
   if(!es.length) lines.push('لا توجد حقوق متبقية بيننا، والحمد لله.');
   es.forEach(function(e){
-    lines.push('• '+(e.reason||'حق')+' بتاريخ '+fmtDate(e.date)+': المبلغ '+money(e.amount)+
+    var its = (e.items||[]).slice().sort(function(a,b){ return (a.date||'').localeCompare(b.date||''); });
+    if(its.length){
+      lines.push('• '+(e.reason||'حق')+':');
+      lines.push('   - '+fmtDate(e.date)+': '+money(e.amount));
+      its.slice(-20).forEach(function(x){ lines.push('   - '+fmtDate(x.date)+': '+(x.desc?x.desc+' ':'')+money(x.amount)); });
+      if(its.length>20) lines.push('   (وإضافات أقدم)');
+    }
+    lines.push((its.length?'   ':'• '+(e.reason||'حق')+' بتاريخ '+fmtDate(e.date)+': ')+(its.length?'المجموع ':'المبلغ ')+money(total(e))+
       (paid(e)>0?'، المسدَّد '+money(paid(e)):'')+'، المتبقي '+money(remaining(e))+
       ' ('+(e.type==='li'?'لي عندك':'لك عندي')+')'+waDue(e));
   });
@@ -700,7 +772,9 @@ function printStatement(p){
   var s = personStats(p.id);
   var rows = es.map(function(e){
     return '<tr><td>'+fmtDate(e.date)+'</td><td>'+esc(e.reason||'')+'</td><td>'+(e.type==='li'?'لي عنده':'علي له')+'</td>'+
-      '<td>'+money(e.amount)+'</td><td>'+money(paid(e))+'</td><td>'+money(Math.max(0,remaining(e)))+'</td><td>'+(e.plan?instCount(e.plan)+(dueOf(e)?'، القادم '+fmtDate(dueOf(e)):''):(e.due?fmtDate(e.due):'-'))+'</td></tr>'+
+      '<td>'+money(total(e))+'</td><td>'+money(paid(e))+'</td><td>'+money(Math.max(0,remaining(e)))+'</td><td>'+(e.plan?instCount(e.plan)+(dueOf(e)?'، القادم '+fmtDate(dueOf(e)):''):(e.due?fmtDate(e.due):'-'))+'</td></tr>'+
+      ((e.items||[]).length ? '<tr><td>'+fmtDate(e.date)+'</td><td colspan="6">↳ المبلغ الأول: '+money(e.amount)+'</td></tr>' : '')+
+      (e.items||[]).slice().sort(function(a,b){ return (a.date||'').localeCompare(b.date||''); }).map(function(x){ return '<tr><td>'+fmtDate(x.date)+'</td><td colspan="6">↳ إضافة: '+esc(x.desc||'')+' '+money(x.amount)+'</td></tr>'; }).join('')+
       e.payments.map(function(py){ return '<tr><td>'+fmtDate(py.date)+'</td><td colspan="6">↳ دفعة: '+money(py.amount)+(py.note?' — '+esc(py.note):'')+'</td></tr>'; }).join('');
   }).join('');
   $('print').innerHTML = '<h2>كشف حساب: '+esc(p.name)+'</h2><div>تاريخ الكشف: '+fmtDate(today())+(p.phone?' · الجوال: '+esc(p.phone):'')+'</div>'+
@@ -783,10 +857,11 @@ function remindOnOpen(){
    - مفتاح الربط GOOGLE_CLIENT_ID من مشروع Google Cloud (نوع Web، والمصدر المسموح https://naser2777.github.io)
    - الصلاحية drive.file: التطبيق يرى فقط الملفات التي أنشأها هو، داخل مجلد DRIVE_FOLDER
    - النسخ التلقائي عند فتح التطبيق إذا مرّت 12 ساعة على آخر نسخة (لا يعمل التطبيق وهو مغلق)
-   - يُحتفظ بآخر 30 نسخة ويُحذف الأقدم */
+   - ملف واحد DRIVE_FILE يُحدَّث في كل مرة (Drive يحفظ إصداراته السابقة 30 يومًا) */
 var GOOGLE_CLIENT_ID = '';
 var DRIVE_FOLDER = 'الحقوق المالية - نسخ احتياطية';
-var DRIVE_EVERY = 12*3600*1000, DRIVE_KEEP = 30, BK_KEY = 'huquq-drive';
+var DRIVE_FILE = 'الحقوق المالية - نسخة احتياطية.json';
+var DRIVE_EVERY = 12*3600*1000, BK_KEY = 'huquq-drive';
 function bkGet(){ try{ return JSON.parse(localStorage.getItem(BK_KEY)) || {}; }catch(e){ return {}; } }
 function bkSet(o){ try{ localStorage.setItem(BK_KEY, JSON.stringify(o)); }catch(e){} }
 function bkPatch(p){ var b = bkGet(); for(var k in p) b[k] = p[k]; bkSet(b); return b; }
@@ -801,17 +876,22 @@ function loadGis(){
   });
   return gisLoading;
 }
-function getToken(interactive){
+function getToken(interactive, chooseAccount){
   var b = bkGet();
-  if(b.token && b.tokenExp > Date.now()) return Promise.resolve(b.token);
+  if(!chooseAccount && b.token && b.tokenExp > Date.now()) return Promise.resolve(b.token);
   return loadGis().then(function(){ return new Promise(function(res, rej){
     var c = google.accounts.oauth2.initTokenClient({
-      client_id: GOOGLE_CLIENT_ID, scope: 'https://www.googleapis.com/auth/drive.file',
-      prompt: interactive ? 'select_account' : '',
+      client_id: GOOGLE_CLIENT_ID, scope: 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/userinfo.email',
+      prompt: chooseAccount ? 'select_account' : '',
+      login_hint: chooseAccount ? undefined : (b.email || undefined),
       callback: function(r){
         if(r.error) return rej(new Error(r.error));
         bkPatch({token:r.access_token, tokenExp:Date.now()+(Number(r.expires_in||3600)-120)*1000});
-        res(r.access_token);
+        if(!chooseAccount) return res(r.access_token);
+        // حساب جديد: نقرأ الإيميل، ونبدأ مجلدًا جديدًا في حسابه
+        fetch('https://www.googleapis.com/oauth2/v3/userinfo', {headers:{Authorization:'Bearer '+r.access_token}})
+          .then(function(x){ return x.ok ? x.json() : {}; }).catch(function(){ return {}; })
+          .then(function(u){ bkPatch({email:u.email||'', folderId:null, fileId:null}); res(r.access_token); });
       },
       error_callback: function(err){ rej(new Error(err && err.type==='popup_closed' ? 'أُغلقت نافذة Google قبل الإكمال' : 'لم تُفتح نافذة Google')); }
     });
@@ -847,25 +927,36 @@ function listBackups(token, fid){
   return gfetch(token, GD+'?q='+q+'&orderBy=createdTime desc&pageSize=100&fields=files(id,name,createdTime)')
     .then(function(r){ return r.json(); }).then(function(j){ return j.files || []; });
 }
-function uploadBackup(token, fid){
+function createBackupFile(token, fid){
   var bd = 'huquq'+Date.now();
   var body = '--'+bd+'\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n'+
-    JSON.stringify({name:'نسخة '+stampNow()+'.json', parents:[fid], mimeType:'application/json'})+
+    JSON.stringify({name:DRIVE_FILE, parents:[fid], mimeType:'application/json'})+
     '\r\n--'+bd+'\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n'+backupJson()+'\r\n--'+bd+'--';
   return gfetch(token, 'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id',
-    {method:'POST', headers:{'Content-Type':'multipart/related; boundary='+bd}, body:body});
+    {method:'POST', headers:{'Content-Type':'multipart/related; boundary='+bd}, body:body})
+    .then(function(r){ return r.json(); }).then(function(j){ bkPatch({fileId:j.id}); });
 }
-function driveBackup(interactive){
-  return getToken(interactive).then(function(token){
+function updateBackupFile(token, id){
+  return gfetch(token, 'https://www.googleapis.com/upload/drive/v3/files/'+id+'?uploadType=media&fields=id',
+    {method:'PATCH', headers:{'Content-Type':'application/json; charset=UTF-8'}, body:backupJson()});
+}
+/* يحدّث الملف نفسه إن وُجد، وإلا يبحث عنه بالاسم في المجلد، وإلا ينشئه */
+function uploadBackup(token, fid){
+  var b = bkGet();
+  if(b.fileId) return updateBackupFile(token, b.fileId);
+  var q = encodeURIComponent("'"+fid+"' in parents and name='"+DRIVE_FILE+"' and trashed=false");
+  return gfetch(token, GD+'?q='+q+'&fields=files(id)').then(function(r){ return r.json(); }).then(function(j){
+    if(j.files && j.files.length){ bkPatch({fileId:j.files[0].id}); return updateBackupFile(token, j.files[0].id); }
+    return createBackupFile(token, fid);
+  });
+}
+function driveBackup(interactive, chooseAccount){
+  return getToken(interactive, chooseAccount).then(function(token){
     function go2(retry){
       return ensureFolder(token).then(function(fid){
-        return uploadBackup(token, fid).then(function(){
-          return listBackups(token, fid).then(function(files){
-            return Promise.all(files.slice(DRIVE_KEEP).map(function(f){ return gfetch(token, GD+'/'+f.id, {method:'DELETE'}).catch(function(){}); }));
-          });
-        });
+        return uploadBackup(token, fid);
       }).catch(function(e){
-        if(retry && e.status===404){ bkPatch({folderId:null}); return go2(false); } // المجلد حُذف من Drive
+        if(retry && e.status===404){ bkPatch({folderId:null, fileId:null}); return go2(false); } // الملف أو المجلد حُذف من Drive
         throw e;
       });
     }
@@ -890,14 +981,16 @@ function driveSection(){
   if(!GOOGLE_CLIENT_ID) return '<div class="set"><h4>Google Drive</h4><p>الربط بـ Google Drive سيعمل بعد إضافة مفتاح Google إلى التطبيق.</p></div>';
   var b = bkGet(), h = '<div class="set"><h4>النسخ الاحتياطي إلى Google Drive</h4>';
   if(b.connected){
-    h += '<div class="drv"><span class="dot '+(b.lastErr?'err':'on')+'"></span><span>متصل. '+(b.lastAt?'آخر نسخة: '+fmtTime(b.lastAt):'لم تُرفع نسخة بعد')+
+    h += '<div class="drv"><span class="dot '+(b.lastErr?'err':'on')+'"></span><span>متصل'+(b.email?' بحساب <b dir="ltr">'+esc(b.email)+'</b>':'')+'.<br>'+(b.lastAt?'آخر نسخة: '+fmtTime(b.lastAt):'لم تُرفع نسخة بعد')+
       (b.lastErr?'<br><span class="r">آخر محاولة لم تنجح: '+esc(b.lastErr)+'</span>':'')+'</span></div>'+
-      '<p>تُرفع نسخة تلقائيًا عند فتح التطبيق إذا مرّت 12 ساعة على آخر نسخة، ويُحتفظ بآخر '+DRIVE_KEEP+' نسخة في مجلد «'+DRIVE_FOLDER+'».</p>'+
+      '<p>يُحدَّث ملف واحد اسمه «'+DRIVE_FILE+'» داخل مجلد «'+DRIVE_FOLDER+'» تلقائيًا عند فتح التطبيق إذا مرّت 12 ساعة على آخر تحديث. ويحتفظ Drive بالإصدارات السابقة للملف 30 يومًا.</p>'+
       '<div class="actions"><button class="btn pri" id="drvNow">انسخ الآن</button><button class="btn sec" id="drvRestore">استرجاع من Drive</button>'+
+      '<button class="btn sec full" id="drvSwitch">تغيير الحساب (الإيميل)</button>'+
       '<button class="btn danger full" id="drvOff">إلغاء الربط</button></div>';
   } else {
     h += '<p>اربط التطبيق بحسابك في Google Drive لتُرفع نسخة من بياناتك تلقائيًا عند فتح التطبيق مرتين في اليوم. التطبيق لا يرى في Drive إلا الملفات التي ينشئها هو.</p>'+
-      '<button class="btn pri" id="drvOn">ربط Google Drive</button>';
+      '<p>عند الضغط على الزر تظهر قائمة حساباتك في Google، فاختر الإيميل الذي تريد أن تُحفظ النسخ في Drive الخاص به.</p>'+
+      '<button class="btn pri" id="drvOn">اختيار الحساب وربط Google Drive</button>';
   }
   return h + '</div>';
 }
@@ -905,7 +998,7 @@ function bindDrive(){
   function busy(id, txt){ var el = $(id); if(el){ el.disabled = true; el.textContent = txt; } }
   if($('drvOn')) $('drvOn').onclick = function(){
     busy('drvOn','جارٍ الربط...');
-    driveBackup(true).then(function(){ toast('تم الربط ورُفعت أول نسخة ✓'); renderSettings(); })
+    driveBackup(true, true).then(function(){ toast('تم الربط ورُفعت أول نسخة ✓'); renderSettings(); })
       .catch(function(e){ renderSettings(); info('لم يكتمل الربط: '+(e.message||e)+'\nتأكد من اتصال الإنترنت ثم حاول مرة أخرى.'); });
   };
   if($('drvNow')) $('drvNow').onclick = function(){
@@ -934,6 +1027,14 @@ function bindDrive(){
       });
     }).catch(function(e){ renderSettings(); info('تعذّر الوصول إلى Drive: '+(e.message||e)); });
   };
+  if($('drvSwitch')) $('drvSwitch').onclick = function(){
+    var old = bkGet();
+    busy('drvSwitch','اختر الحساب من نافذة Google...');
+    try{ if(old.token && window.google && google.accounts) google.accounts.oauth2.revoke(old.token, function(){}); }catch(e){}
+    bkPatch({token:null});
+    driveBackup(true, true).then(function(){ toast('تم التحويل ورُفعت نسخة إلى الحساب الجديد ✓'); renderSettings(); })
+      .catch(function(e){ bkPatch({email:old.email, folderId:old.folderId, fileId:old.fileId}); renderSettings(); info('لم يتم تغيير الحساب: '+(e.message||e)); });
+  };
   if($('drvOff')) $('drvOff').onclick = function(){
     ask('سيتوقف النسخ التلقائي إلى Drive. النسخ الموجودة في Drive تبقى كما هي.', 'إلغاء الربط', function(){
       var b = bkGet();
@@ -955,7 +1056,7 @@ function renderSettings(){
       '<div class="actions"><button class="btn pri" id="exp">حفظ نسخة احتياطية</button><button class="btn sec" id="imp">استرجاع نسخة</button></div>'+
       '<input type="file" id="impFile" accept=".json,application/json" class="hidden"></div>')+
     '<div class="set"><h4>حذف كل البيانات</h4><p>يحذف كل الأشخاص والحقوق والدفعات من هذا الجوال نهائيًا.</p><button class="btn danger" id="wipe">حذف كل البيانات</button></div>'+
-    '<div class="hint" style="text-align:center;margin-top:16px">الحقوق المالية — الإصدار 3</div>';
+    '<div class="hint" style="text-align:center;margin-top:16px">الحقوق المالية — الإصدار 4</div>';
   $('chPin').onclick = function(){ showLock('change'); };
   $('lockNow').onclick = function(){ showLock('enter'); };
   bindDrive();

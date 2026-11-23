@@ -1,5 +1,5 @@
 // غيّر رقم الإصدار مع كل تحديث للتطبيق حتى تصل التحديثات للجوال
-var CACHE = 'huquq-v4';
+var CACHE = 'huquq-v5';
 var FILES = ['./', './index.html', './manifest.json', './icon-192.png', './icon-512.png'];
 
 self.addEventListener('install', function (e) {
