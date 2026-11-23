@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>الحقوق المالية</title>
-<meta name="theme-color" content="#0d4a3e">
+<meta name="theme-color" content="#062a22">
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
@@ -203,6 +203,42 @@ main{max-width:640px;margin:0 auto;padding-block:16px;padding-left:max(16px,env(
 .sigpad{width:100%;height:220px;border:1px solid var(--line);border-radius:var(--r-sm);background:#ffffff;touch-action:none;display:block}
 .sigbtns{display:flex;gap:6px;flex-wrap:wrap}
 .stmt-prev{max-width:100%;border-radius:var(--r-sm);border:1px solid var(--line);display:block;margin:0 auto 12px}
+.fin-cta{display:flex;align-items:center;gap:12px;width:100%;text-align:right;background:var(--card);border-radius:var(--r);padding:14px 16px;margin-bottom:14px;box-shadow:var(--shadow)}
+.fin-cta .ic{width:44px;height:44px;border-radius:14px;background:var(--gold-soft);color:var(--gold);display:grid;place-items:center;font-size:22px;flex:none}
+.fin-cta .tx{flex:1;min-width:0}
+.fin-cta b{font-family:var(--f-head);font-size:15px;display:block}
+.fin-cta span{font-size:13px;color:var(--muted)}
+.fin-cta .v{font-family:var(--f-head);font-weight:700;color:var(--green);white-space:nowrap}
+.mswitch{display:flex;align-items:center;justify-content:space-between;background:var(--card);border-radius:var(--r);padding:6px;margin-bottom:12px;box-shadow:var(--shadow)}
+.mswitch b{font-family:var(--f-head)}
+.mswitch button{width:44px;height:40px;border-radius:12px;background:var(--soft);font-size:18px}
+.avail{background:linear-gradient(150deg,var(--hero1),var(--hero2));color:#ffffff;border-radius:var(--r);padding:18px;margin-bottom:14px;box-shadow:var(--shadow-lg)}
+.avail .lbl{opacity:.8;font-size:14px}
+.avail .big{font-family:var(--f-head);font-size:30px;font-weight:700;color:var(--gold);margin:4px 0 12px}
+.avail .row{display:flex;justify-content:space-between;gap:10px;font-size:14px;padding:5px 0;border-top:1px solid rgba(255,255,255,.12)}
+.avail .row b{font-variant-numeric:tabular-nums}
+.avail .note{font-size:12px;opacity:.75;margin-top:8px;line-height:1.7}
+.fcard{background:var(--card);border-radius:var(--r);padding:16px;margin-bottom:14px;box-shadow:var(--shadow)}
+.fcard h4{font-family:var(--f-head);font-size:16px;margin-bottom:10px;display:flex;align-items:center;gap:8px}
+.fcard h4 span{flex:1}
+.fcard .line{font-size:14px;color:var(--ink2);line-height:1.9}
+.cat{margin-bottom:10px}
+.cat summary{list-style:none;cursor:pointer}
+.cat summary::-webkit-details-marker{display:none}
+.cat .top{display:flex;justify-content:space-between;gap:8px;font-size:14px;margin-bottom:5px}
+.cat .top b{font-family:var(--f-head);white-space:nowrap}
+.cat .top small{color:var(--muted)}
+.cat .bar2{height:10px;background:var(--track);border-radius:6px;overflow:hidden}
+.cat .bar2 i{display:block;height:100%;background:var(--brand2);border-radius:6px}
+.cat.first .bar2 i{background:var(--gold)}
+.cat .its{padding:6px 10px 2px;font-size:13px;color:var(--ink2)}
+.cat .its div{display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px dashed var(--line)}
+.lrow{display:flex;align-items:center;gap:8px;padding:9px 0;border-top:1px solid var(--line);font-size:14px;width:100%;text-align:right}
+.lrow .n{flex:1;min-width:0}
+.lrow .n small{display:block;color:var(--muted);font-size:12px}
+.lrow b{white-space:nowrap;font-family:var(--f-head)}
+.catpill{font-size:11px;padding:2px 8px;border-radius:999px;background:var(--tint);color:var(--brand-ink);white-space:nowrap}
+.autocat{font-size:12px;color:var(--brand-ink);margin-top:4px}
 .toggle button.on.pl{border-color:var(--brand2);background:var(--tint);color:var(--brand-ink)}
 .calbtns{display:grid;gap:8px;margin-top:14px}
 
@@ -267,6 +303,79 @@ main{max-width:640px;margin:0 auto;padding-block:16px;padding-left:max(16px,env(
 .toast{position:fixed;bottom:calc(92px + env(safe-area-inset-bottom,0px));left:50%;transform:translateX(-50%);background:var(--toast-bg);color:var(--toast-ink);padding:11px 20px;border-radius:999px;font-size:14px;font-weight:500;z-index:70;box-shadow:var(--shadow-lg);max-width:calc(100% - 32px);text-align:center}
 
 @media (max-width:360px){ .sum .val{font-size:17px} .sum .net .val{font-size:24px} .nums b{font-size:13px} }
+
+/* ===== طبقة «فاخر» (الإصدار 9): زمردي عميق وذهبي، نقش هندسي خفيف، حواف ذهبية رفيعة ===== */
+:root{
+  --bg:#f4f1e8; --card:#fffdf7; --ink:#13201b; --ink2:#36453f; --muted:#6f7a72; --line:#e8e1d0;
+  --brand:#0a3a30; --brand2:#11604f; --brand-ink:#0b4a3d; --gold:#b48a2f; --gold-soft:#f5ecd8;
+  --gold-grad:linear-gradient(135deg,#e6c77a 0%,#c49a3c 45%,#9c7424 100%);
+  --hero1:#0b4136; --hero2:#062a22; --tint:#e7efe9; --soft:#f1ece0; --soft2:#faf6ec; --input:#fffdf8;
+  --shadow:0 1px 0 rgba(180,138,47,.10),0 6px 20px rgba(20,32,27,.06);
+  --shadow-lg:0 14px 34px rgba(6,42,34,.32);
+  --pattern:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='56' viewBox='0 0 56 56'%3E%3Cg fill='none' stroke='%23e6c77a' stroke-opacity='.13' stroke-width='1'%3E%3Cpath d='M28 6l6 16 16 6-16 6-6 16-6-16-16-6 16-6z'/%3E%3Crect x='17' y='17' width='22' height='22' transform='rotate(45 28 28)'/%3E%3Ccircle cx='28' cy='28' r='5'/%3E%3C/g%3E%3C/svg%3E");
+  --r:20px; --r-sm:14px;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --bg:#0a1210; --card:#111b18; --ink:#ece7da; --ink2:#c7c0ad; --muted:#958f80; --line:#25302b;
+  --brand:#0f5244; --brand2:#167060; --brand-ink:#7fd9c0; --gold:#d8b462; --gold-soft:#2c2617;
+  --hero1:#0d4236; --hero2:#06221c; --tint:#16302a; --soft:#1a2420; --soft2:#141f1b; --input:#0e1714;
+  --shadow:0 1px 0 rgba(216,180,98,.08),0 6px 20px rgba(0,0,0,.35); --shadow-lg:0 14px 34px rgba(0,0,0,.5) }}
+:root[data-theme="dark"]{
+  --bg:#0a1210; --card:#111b18; --ink:#ece7da; --ink2:#c7c0ad; --muted:#958f80; --line:#25302b;
+  --brand:#0f5244; --brand2:#167060; --brand-ink:#7fd9c0; --gold:#d8b462; --gold-soft:#2c2617;
+  --hero1:#0d4236; --hero2:#06221c; --tint:#16302a; --soft:#1a2420; --soft2:#141f1b; --input:#0e1714;
+  --shadow:0 1px 0 rgba(216,180,98,.08),0 6px 20px rgba(0,0,0,.35); --shadow-lg:0 14px 34px rgba(0,0,0,.5) }
+
+/* الشريط العلوي: زمردي بنقش وخط ذهبي */
+body::before{background:var(--hero2)}
+header{background:var(--pattern),linear-gradient(160deg,var(--hero1),var(--hero2));background-size:56px 56px,auto;box-shadow:0 1px 0 rgba(230,199,122,.35),0 8px 24px rgba(6,42,34,.25);padding-block:16px}
+header h1{font-size:20px;letter-spacing:.2px}
+.iconbtn{background:rgba(230,199,122,.12);border:1px solid rgba(230,199,122,.28);color:#f3e3b5}
+
+/* البطاقات: حافة ذهبية رفيعة وزوايا أنعم */
+.sum .box,.person,.entry,.up,.phead,.set,.fcard,.fin-cta,.sched,.mswitch,.empty,.search{border:1px solid var(--line)}
+.sum .box{padding:16px}
+.sum .box:nth-child(1),.sum .box:nth-child(2){border-top-width:1px}
+.sum .box:nth-child(1) .lbl::before,.sum .box:nth-child(2) .lbl::before{content:"";display:inline-block;width:8px;height:8px;border-radius:50%;margin-left:6px;vertical-align:middle}
+.sum .box:nth-child(1) .lbl::before{background:var(--green)}
+.sum .box:nth-child(2) .lbl::before{background:var(--red)}
+.sum .net,.avail{background:var(--pattern),linear-gradient(155deg,var(--hero1),var(--hero2));background-size:56px 56px,auto;border:1px solid rgba(230,199,122,.35);position:relative}
+.sum .net::before,.avail::before{content:"";position:absolute;inset:6px;border:1px solid rgba(230,199,122,.18);border-radius:calc(var(--r) - 6px);pointer-events:none}
+.sum .net::after{display:none}
+.sum .net .val,.avail .big{background:var(--gold-grad);-webkit-background-clip:text;background-clip:text;color:transparent!important;font-size:32px;letter-spacing:.3px}
+.sum .net .lbl,.avail .lbl{color:#e9dcb6;opacity:.9;letter-spacing:.3px}
+.avail .row{border-top-color:rgba(230,199,122,.16);color:#eef0ea}
+
+/* الأفاتار: ذهبي هادئ */
+.avatar{background:var(--gold-soft);color:var(--gold);border:1px solid rgba(180,138,47,.25)}
+
+/* الأزرار */
+.btn.pri,.smallbtn.pri,.chip.on{background:linear-gradient(160deg,var(--brand2),var(--brand));color:#ffffff;border-color:transparent}
+.chip.on{color:#f3e3b5}
+.btn.sec{background:var(--tint);color:var(--brand-ink);border:1px solid rgba(17,96,79,.12)}
+.fab{background:var(--gold-grad);color:#1d1606;border:0;box-shadow:0 10px 26px rgba(156,116,36,.45);letter-spacing:.2px}
+.fab:active{filter:brightness(.95)}
+
+/* العناوين الصغيرة بزخرفة ذهبية */
+.fcard h4::before,.up h4::before{content:"";width:6px;height:18px;border-radius:3px;background:var(--gold-grad);flex:none}
+.up h4::before{width:6px;height:18px}
+.sec-title{color:var(--gold)}
+
+/* شريط التقدم وأشرطة التحليل */
+.bar i,.cat .bar2 i{background:linear-gradient(90deg,var(--brand2),#2f8f74)}
+.cat.first .bar2 i{background:var(--gold-grad)}
+
+/* القفل */
+#lock{background:var(--pattern),radial-gradient(120% 80% at 50% 0%,#14705c,var(--hero1) 50%,var(--hero2));background-size:56px 56px,auto}
+#lock::before{border:2px solid rgba(230,199,122,.6);box-shadow:0 0 0 6px rgba(230,199,122,.08),0 10px 30px rgba(0,0,0,.35)}
+.pad button{background:rgba(255,255,255,.06);border:1px solid rgba(230,199,122,.22);color:#f6ecd0}
+.dots span{border-color:rgba(230,199,122,.8)}
+.dots span.f{background:var(--gold-grad);border-color:transparent}
+
+/* النوافذ */
+.sheet{border-top:1px solid rgba(180,138,47,.35)}
+.sheet::before{background:var(--gold-grad);opacity:.6}
+.listsum{border:1px solid rgba(180,138,47,.22)}
 
 /* الطباعة */
 #print{display:none}
@@ -489,15 +598,17 @@ function go(view, personId){
 }
 $('backBtn').onclick = function(){ go('home'); };
 $('setBtn').onclick = function(){ go('settings'); };
-$('fab').onclick = function(){ openEntryForm(null, state.view==='person' ? state.personId : null); };
+$('fab').onclick = function(){ if(state.view==='budget') return openExpForm(); openEntryForm(null, state.view==='person' ? state.personId : null); };
 
 function render(){
   var isHome = state.view==='home';
   $('backBtn').classList.toggle('hidden', isHome);
   $('setBtn').classList.toggle('hidden', !isHome);
   $('fab').classList.toggle('hidden', state.view==='settings');
+  $('fab').textContent = state.view==='budget' ? '+ مصروف' : '+ حق جديد';
   if(state.view==='person' && !personById(state.personId)) state.view='home';
   if(state.view==='home') renderHome();
+  else if(state.view==='budget') renderBudget();
   else if(state.view==='person') renderPerson();
   else renderSettings();
 }
@@ -512,6 +623,7 @@ function renderHome(){
     '<div class="box net"><div class="lbl">الصافي</div><div class="val '+(t.net>=0?'g':'r')+'">'+
       (t.net===0?'متعادل':(t.net>0?'لك ':'عليك ')+money(Math.abs(t.net)))+'</div></div>'+
   '</div>';
+  html += finCta();
   if(!owner().name && db.entries.length) html += '<button class="sched-cta" id="ownerCta"><i>✎</i><span><b>أضف اسمك وتوقيعك</b><br>ليظهرا في رسائل الواتساب وكشوف الحساب التي ترسلها.</span></button>';
   if(t.late) html += '<div class="alert">⚠ يوجد '+t.late+' '+(t.late===1?'حق متأخر':'حقوق متأخرة')+' عن موعد السداد</div>';
   var up = upcoming(14);
@@ -580,6 +692,7 @@ function renderHome(){
   document.querySelectorAll('.chip').forEach(function(b){ b.onclick=function(){ state.filter=b.dataset.f; renderHome(); }; });
   document.querySelectorAll('.person,.uprow').forEach(function(b){ b.onclick=function(){ go('person', b.dataset.p); }; });
   if($('ownerCta')) $('ownerCta').onclick = function(){ go('settings'); };
+  if($('finCta')) $('finCta').onclick = function(){ state.bMonth = today().slice(0,7); go('budget'); };
 }
 
 /* ============ صفحة الشخص ============ */
@@ -1298,7 +1411,7 @@ function stampNow(){
   var d = new Date(); d.setMinutes(d.getMinutes()-d.getTimezoneOffset());
   return d.toISOString().slice(0,16).replace('T',' ').replace(':','-');
 }
-function backupJson(){ return JSON.stringify({app:'huquq', version:3, exported:new Date().toISOString(), owner:db.owner||null, people:db.people, entries:db.entries}); }
+function backupJson(){ return JSON.stringify({app:'huquq', version:3, exported:new Date().toISOString(), owner:db.owner||null, budget:db.budget||null, people:db.people, entries:db.entries}); }
 function listBackups(token, fid){
   var q = encodeURIComponent("'"+fid+"' in parents and trashed=false");
   return gfetch(token, GD+'?q='+q+'&orderBy=createdTime desc&pageSize=100&fields=files(id,name,createdTime)')
@@ -1397,7 +1510,7 @@ function bindDrive(){
           gfetch(token, GD+'/'+btn.dataset.f+'?alt=media').then(function(r){ return r.json(); }).then(function(d){
             if(d.app!=='huquq' || !Array.isArray(d.people) || !Array.isArray(d.entries)) throw new Error('bad');
             ask('سيتم استبدال البيانات الحالية بهذه النسخة ('+d.people.length+' شخص، '+d.entries.length+' حق). متابعة؟', 'نعم، استرجع', function(){
-              db.people = d.people; db.entries = d.entries; if(d.owner) db.owner = d.owner; save(); go('home'); toast('تم استرجاع النسخة');
+              db.people = d.people; db.entries = d.entries; if(d.owner) db.owner = d.owner; if(d.budget) db.budget = d.budget; save(); go('home'); toast('تم استرجاع النسخة');
             }, true);
           }).catch(function(){ info('تعذّر قراءة هذه النسخة.'); });
         }; });
@@ -1594,6 +1707,242 @@ function openSignedStatement(p){
   });
 }
 
+/* ============ وضعي المالي ============
+   db.budget = {income:[{id,name,amount}], fixed:[{id,name,amount,cat}], exp:[{id,date,amount,cat,item}], learn:{بند:فئة}, margin:10, payDay:27}
+   - الدخل والمصاريف الثابتة شهرية. المصاريف المتغيرة من سجل المصروفات (متوسط آخر 3 أشهر فيها تسجيل).
+   - المتاح للسداد = الدخل − الثابتة − المتغيرة − احتياطي الطوارئ%. */
+var CATS = [
+  {id:'food', name:'مواد غذائية', kw:['حليب','لبن','زبادي','خضار','خضرة','خضروات','طماطم','بصل','بطاطس','فواكه','فاكهة','موز','تفاح','خبز','عيش','رز','ارز','لحم','لحوم','دجاج','فراخ','سمك','بيض','جبن','تمر','سكر','شاي','قهوة','هيل','زيت طبخ','زيت','مويه','ماء','مياه','بقاله','سوبرماركت','تموينات','هايبر','عصير','معلبات','بهارات','طحين','دقيق','مكرونه','حلويات','شوكولاته','بسكويت']},
+  {id:'fuel', name:'مواصلات ووقود', kw:['بنزين','وقود','ديزل','ديسل','محطه','تعبئه','غسيل سياره','زيت سياره','تغيير زيت','صيانه سياره','كفر','كفرات','اطار','اوبر','كريم','تاكسي','مواقف','باص','قطار','تذكره','ساهر','مخالفه','تامين سياره','استماره','فحص دوري']},
+  {id:'house', name:'سكن', kw:['ايجار','سكن','شقه','صيانه','سباك','كهربائي','اثاث','منظفات','تنظيف','مكيف','ادوات منزليه']},
+  {id:'bills', name:'فواتير واتصالات', kw:['كهرباء','فاتوره','فاتوره ماء','جوال','شحن رصيد','رصيد','باقه','انترنت','نت','اتصالات','stc','موبايلي','زين','اشتراك','غاز']},
+  {id:'health', name:'صحة', kw:['دواء','ادويه','علاج','صيدليه','مستشفى','مستوصف','عياده','طبيب','دكتور','تحاليل','اسنان','نظاره','تامين طبي']},
+  {id:'edu', name:'تعليم', kw:['مدرسه','رسوم دراسيه','جامعه','كتب','كتاب','قرطاسيه','دوره','دروس','معلم','حلقه']},
+  {id:'clothes', name:'ملابس', kw:['ملابس','ثوب','ثياب','حذاء','احذيه','عبايه','شماغ','غتره','خياط','جزمه']},
+  {id:'out', name:'مطاعم وترفيه', kw:['مطعم','مطاعم','وجبه','غداء','عشاء','فطور','كافيه','بيتزا','برجر','شاورما','بروست','توصيل','هنقرستيشن','جاهز','مرسول','نزهه','سفر','فندق','رحله','العاب']},
+  {id:'family', name:'أسرة وهدايا', kw:['هديه','هدايا','عيديه','مصروف','اطفال','حفاضات','حليب اطفال','خادمه','عامله','سائق','زواج','مناسبه']},
+  {id:'charity', name:'صدقات وزكاة', kw:['صدقه','زكاه','تبرع','كفاله','وقف','فطره']},
+  {id:'debt', name:'سداد ديون وأقساط', kw:['قسط','سداد','دين','تقسيط','بنك','تمويل']},
+  {id:'other', name:'أخرى', kw:[]}
+];
+var MONTHS = ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
+function bud(){ if(!db.budget) db.budget = {income:[], fixed:[], exp:[], learn:{}, margin:10, payDay:27}; var b = db.budget;
+  b.income = b.income||[]; b.fixed = b.fixed||[]; b.exp = b.exp||[]; b.learn = b.learn||{}; if(b.margin==null) b.margin = 10; if(!b.payDay) b.payDay = 27; return b; }
+function catById(id){ return CATS.find(function(c){ return c.id===id; }) || CATS[CATS.length-1]; }
+function normAr(t){ return String(t||'').toLowerCase().replace(/[\u064B-\u0652\u0640]/g,'').replace(/[أإآ]/g,'ا').replace(/ة/g,'ه').replace(/ى/g,'ي').replace(/\s+/g,' ').trim(); }
+/* «مواد غذائية - حليب» أو «حليب» ← {cat, item} */
+function parseExp(text){
+  var t = String(text||'').trim(), item = t, cat = null, parts = t.split(/\s*[-–—:\/]\s*/);
+  if(parts.length>1){
+    var head = normAr(parts[0]), c = CATS.find(function(c){ return normAr(c.name)===head || normAr(c.name).indexOf(head)===0 && head.length>2; });
+    if(c){ cat = c.id; item = parts.slice(1).join(' - '); }
+  }
+  if(!cat) cat = guessCat(item);
+  return {cat:cat, item:item};
+}
+function guessCat(item){
+  var n = normAr(item), b = bud();
+  if(b.learn[n]) return b.learn[n];
+  var best = null, bestLen = 0;
+  CATS.forEach(function(c){ c.kw.forEach(function(k){ var kk = normAr(k);
+    if(kk.length > bestLen && (' '+n+' ').indexOf(kk) >= 0){ best = c.id; bestLen = kk.length; } }); });
+  return best || 'other';
+}
+function ymKey(d){ return d.slice(0,7); }
+function monthLabel(ym){ var p = ym.split('-'); return MONTHS[Number(p[1])-1]+' '+p[0]; }
+function addMonthsYM(ym, n){ var p = ym.split('-').map(Number), m = p[1]-1+n; return (p[0]+Math.floor(m/12))+'-'+String(((m%12)+12)%12+1).padStart(2,'0'); }
+function sumArr(a, f){ return round2(a.reduce(function(x,y){ return x+(f?f(y):y.amount); },0)); }
+function expOfMonth(ym){ return bud().exp.filter(function(e){ return ymKey(e.date)===ym; }); }
+/* تقدير المصاريف المتغيرة الشهرية */
+function variableEstimate(){
+  var b = bud(), cur = today().slice(0,7), byM = {};
+  b.exp.forEach(function(e){ var k = ymKey(e.date); byM[k] = (byM[k]||0) + e.amount; });
+  var past = Object.keys(byM).filter(function(k){ return k < cur; }).sort().slice(-3);
+  if(past.length) return {v:round2(past.reduce(function(a,k){ return a+byM[k]; },0)/past.length), how:'متوسط '+countTxt(past.length,'شهر واحد','شهرين','أشهر','شهرًا')+' مسجّلة'};
+  if(byM[cur]){
+    var d = Number(today().slice(8,10)), days = new Date(Number(cur.slice(0,4)), Number(cur.slice(5,7)), 0).getDate();
+    return {v:round2(byM[cur]*days/Math.max(d,1)), how:'تقدير من مصاريف هذا الشهر حتى الآن'};
+  }
+  return {v:0, how:'لا توجد مصاريف مسجّلة بعد'};
+}
+/* الالتزامات المجدولة (ما علي) في شهر معيّن */
+function commitments(ym){
+  var c = 0;
+  db.people.forEach(function(p){ if(hasSched(p)) schedRows(p).forEach(function(r){ if(ymKey(r.date)===ym) c += r.amount; }); });
+  db.entries.forEach(function(e){
+    if(e.type==='li' || remaining(e)<=0) return;
+    if(e.plan){ installments(e).forEach(function(x){ if(ymKey(x.date)===ym) c += x.amount; }); }
+    else if(!hasSched(personById(e.personId)) && e.due && ymKey(e.due)===ym) c += remaining(e);
+  });
+  return round2(c);
+}
+function finSummary(){
+  var b = bud(), inc = sumArr(b.income), fix = sumArr(b.fixed), ve = variableEstimate();
+  var free = round2(inc - fix - ve.v), marg = free>0 ? round2(free*b.margin/100) : 0, avail = round2(free - marg);
+  var next = addMonthsYM(today().slice(0,7), 1), com = commitments(next);
+  var uns = db.people.filter(function(p){ return !hasSched(p) && schedOwed(p)>0; });
+  var owedUns = round2(uns.reduce(function(a,p){ return a+schedOwed(p); },0));
+  return {inc:inc, fix:fix, ve:ve, marg:marg, avail:avail, com:com, cap:round2(avail-com), uns:uns, owedUns:owedUns, next:next};
+}
+function finCta(){
+  var b = bud();
+  if(!b.income.length && !b.exp.length && !b.fixed.length)
+    return '<button class="fin-cta" id="finCta"><span class="ic">◔</span><span class="tx"><b>وضعي المالي</b><span>سجّل دخلك ومصاريفك لتعرف أين تذهب أموالك وكم تستطيع أن تسدد شهريًا.</span></span></button>';
+  var f = finSummary();
+  return '<button class="fin-cta" id="finCta"><span class="ic">◔</span><span class="tx"><b>وضعي المالي</b><span>مصاريف '+monthLabel(today().slice(0,7))+': '+money(sumArr(expOfMonth(today().slice(0,7))))+'</span></span>'+
+    '<span class="v">'+(f.avail>0?money(f.avail):'—')+'<span style="display:block;font-size:11px;color:var(--muted);font-weight:400">متاح للسداد</span></span></button>';
+}
+function renderBudget(){
+  var b = bud(), ym = state.bMonth || today().slice(0,7), f = finSummary();
+  $('title').textContent = 'وضعي المالي';
+  var h = '<div class="avail"><div class="lbl">المتاح للسداد شهريًا</div><div class="big">'+(f.avail>0?money(f.avail):money(0))+'</div>'+
+    '<div class="row"><span>الدخل الشهري</span><b>'+money(f.inc)+'</b></div>'+
+    '<div class="row"><span>− المصاريف الثابتة</span><b>'+money(f.fix)+'</b></div>'+
+    '<div class="row"><span>− المصاريف المتغيرة</span><b>'+money(f.ve.v)+'</b></div>'+
+    '<div class="row"><span>− احتياطي للطوارئ ('+b.margin+'%)</span><b>'+money(f.marg)+'</b></div>'+
+    '<div class="note">المصاريف المتغيرة: '+f.ve.how+'.'+(f.inc<=0?' أضف دخلك الشهري في الأسفل ليظهر المتاح.':'')+'</div></div>';
+
+  // خطة السداد
+  h += '<div class="fcard"><h4><span>خطة السداد</span></h4>';
+  if(f.inc<=0){ h += '<div class="line">أضف دخلك الشهري ومصاريفك الثابتة أولًا، ثم يحسب التطبيق ما تستطيع سداده.</div>'; }
+  else {
+    h += '<div class="line">ملتزم به في جدولات وأقساط '+monthLabel(f.next)+': <b>'+money(f.com)+'</b><br>المتبقي لخطة جديدة: <b class="'+(f.cap>0?'g':'r')+'">'+money(Math.max(0,f.cap))+'</b> شهريًا</div>';
+    if(f.owedUns>0){
+      h += '<div class="line">ديون عليك بلا جدولة: <b>'+money(f.owedUns)+'</b> لـ '+countTxt(f.uns.length,'شخص واحد','شخصين','أشخاص','شخصًا')+'</div>';
+      if(f.cap>0){
+        var n = Math.ceil(f.owedUns/f.cap - 0.0001);
+        h += '<div class="line">بهذا المبلغ تنتهي منها في <b>'+countTxt(n,'شهر واحد','شهرين','أشهر','شهرًا')+'</b>، تقريبًا في '+monthLabel(addMonthsYM(f.next, n-1))+'.</div>'+
+          '<div class="two" style="margin-top:10px"><div class="field"><label>يوم السداد من كل شهر</label><select id="bDay">'+
+          Array.from({length:28},function(_,i){ return '<option'+(i+1===b.payDay?' selected':'')+'>'+(i+1)+'</option>'; }).join('')+'</select></div>'+
+          '<div class="field"><label>احتياطي الطوارئ</label><select id="bMargin">'+[0,5,10,15,20,25].map(function(m){ return '<option value="'+m+'"'+(m===b.margin?' selected':'')+'>'+m+'%</option>'; }).join('')+'</select></div></div>'+
+          '<button class="btn pri" id="bPlan">بناء خطة السداد</button>';
+      } else {
+        h += '<div class="line r">لا يتبقى مبلغ لخطة جديدة هذا الشهر. راجع مصاريفك في «أين تذهب أموالك» أو قلّل الاحتياطي.</div>'+
+          '<div class="field" style="margin-top:8px"><label>احتياطي الطوارئ</label><select id="bMargin">'+[0,5,10,15,20,25].map(function(m){ return '<option value="'+m+'"'+(m===b.margin?' selected':'')+'>'+m+'%</option>'; }).join('')+'</select></div>';
+      }
+    } else {
+      h += '<div class="line">لا توجد ديون عليك بلا جدولة.</div>'+
+        '<div class="field" style="margin-top:8px"><label>احتياطي الطوارئ</label><select id="bMargin">'+[0,5,10,15,20,25].map(function(m){ return '<option value="'+m+'"'+(m===b.margin?' selected':'')+'>'+m+'%</option>'; }).join('')+'</select></div>';
+    }
+  }
+  h += '</div>';
+
+  // أين تذهب أموالك
+  var ex = expOfMonth(ym), byCat = {};
+  b.fixed.forEach(function(x){ var c = x.cat||guessCat(x.name); (byCat[c] = byCat[c]||{t:0,items:{}}); byCat[c].t += x.amount; byCat[c].items[x.name+' (ثابت)'] = (byCat[c].items[x.name+' (ثابت)']||0) + x.amount; });
+  ex.forEach(function(x){ (byCat[x.cat] = byCat[x.cat]||{t:0,items:{}}); byCat[x.cat].t += x.amount; var it = x.item||'بدون وصف'; byCat[x.cat].items[it] = (byCat[x.cat].items[it]||0) + x.amount; });
+  var cats = Object.keys(byCat).map(function(k){ return {c:catById(k), t:round2(byCat[k].t), items:byCat[k].items}; }).sort(function(a,b2){ return b2.t-a.t; });
+  var tot = round2(cats.reduce(function(a,c){ return a+c.t; },0)), mx = cats.length ? cats[0].t : 1;
+  h += '<div class="mswitch"><button id="mPrev" aria-label="الشهر السابق">→</button><b>'+monthLabel(ym)+'</b><button id="mNext" aria-label="الشهر التالي">←</button></div>';
+  h += '<div class="fcard"><h4><span>أين تذهب أموالك</span><b>'+money(tot)+'</b></h4>';
+  if(!cats.length) h += '<div class="line">لا توجد مصاريف في هذا الشهر. اضغط «+ مصروف» في الأسفل وسجّل أول مصروف، مثل «بنزين» أو «مواد غذائية - حليب».</div>';
+  cats.forEach(function(c, i){
+    var pct = tot ? Math.round(c.t/tot*100) : 0;
+    h += '<details class="cat'+(i===0?' first':'')+'"><summary><div class="top"><span>'+c.c.name+' <small>'+pct+'%'+(f.inc?' من الدخل '+Math.round(c.t/f.inc*100)+'%':'')+'</small></span><b>'+money(c.t)+'</b></div>'+
+      '<div class="bar2"><i style="width:'+Math.max(3,c.t/mx*100)+'%"></i></div></summary><div class="its">'+
+      Object.keys(c.items).sort(function(a,b2){ return c.items[b2]-c.items[a]; }).map(function(k){ return '<div><span>'+esc(k)+'</span><b>'+money(c.items[k])+'</b></div>'; }).join('')+'</div></details>';
+  });
+  if(cats.length>1) h += '<div class="hint">أكثر ما تصرف عليه في '+monthLabel(ym)+': <b>'+cats[0].c.name+'</b>. اضغط أي فئة لرؤية بنودها.</div>';
+  h += '</div>';
+
+  // مصاريف الشهر
+  h += '<div class="fcard"><h4><span>مصاريف '+monthLabel(ym)+'</span><button class="smallbtn pri" id="bAddExp">+ مصروف</button></h4>'+
+    (ex.length ? ex.slice().sort(function(a,b2){ return b2.date.localeCompare(a.date); }).map(function(x){
+      return '<button class="lrow" data-exp="'+x.id+'"><span class="n">'+esc(x.item||'بدون وصف')+'<small>'+fmtDate(x.date)+'</small></span><span class="catpill">'+catById(x.cat).name+'</span><b>'+money(x.amount)+'</b></button>';
+    }).join('') : '<div class="line">لا شيء بعد.</div>')+'</div>';
+
+  // الدخل والثابتة
+  function listBlock(title, arr, kind, addLbl){
+    return '<div class="fcard"><h4><span>'+title+'</span><b>'+money(sumArr(arr))+'</b></h4>'+
+      arr.map(function(x){ return '<button class="lrow" data-'+kind+'="'+x.id+'"><span class="n">'+esc(x.name)+(kind==='fix'?'<small>'+catById(x.cat||guessCat(x.name)).name+'</small>':'')+'</span><b>'+money(x.amount)+'</b></button>'; }).join('')+
+      '<button class="smallbtn" style="margin-top:10px" id="bAdd_'+kind+'">'+addLbl+'</button></div>';
+  }
+  h += listBlock('الدخل الشهري', b.income, 'inc', '+ إضافة دخل (راتب، إيجار عقار...)');
+  h += listBlock('المصاريف الثابتة الشهرية', b.fixed, 'fix', '+ إضافة مصروف ثابت (إيجار، فواتير...)');
+  $('app').innerHTML = h;
+
+  $('mPrev').onclick = function(){ state.bMonth = addMonthsYM(ym,-1); renderBudget(); };
+  $('mNext').onclick = function(){ state.bMonth = addMonthsYM(ym,1); renderBudget(); };
+  $('bAddExp').onclick = function(){ openExpForm(); };
+  $('bAdd_inc').onclick = function(){ openMonthlyForm('income'); };
+  $('bAdd_fix').onclick = function(){ openMonthlyForm('fixed'); };
+  document.querySelectorAll('[data-exp]').forEach(function(x){ x.onclick = function(){ openExpForm(x.dataset.exp); }; });
+  document.querySelectorAll('[data-inc]').forEach(function(x){ x.onclick = function(){ openMonthlyForm('income', x.dataset.inc); }; });
+  document.querySelectorAll('[data-fix]').forEach(function(x){ x.onclick = function(){ openMonthlyForm('fixed', x.dataset.fix); }; });
+  if($('bMargin')) $('bMargin').onchange = function(){ b.margin = Number($('bMargin').value); save(); renderBudget(); };
+  if($('bDay')) $('bDay').onchange = function(){ b.payDay = Number($('bDay').value); save(); };
+  if($('bPlan')) $('bPlan').onclick = function(){ buildPlan(f); };
+}
+function catOptions(sel){ return CATS.map(function(c){ return '<option value="'+c.id+'"'+(c.id===sel?' selected':'')+'>'+c.name+'</option>'; }).join(''); }
+function openExpForm(id){
+  var b = bud(), x = id ? b.exp.find(function(e){ return e.id===id; }) : null, manual = !!x;
+  var items = []; b.exp.forEach(function(e){ if(e.item && items.indexOf(e.item)<0) items.push(e.item); });
+  sheet('<h3>'+(x?'تعديل مصروف':'مصروف جديد')+'</h3><div class="err hidden" id="xErr"></div>'+
+    '<div class="field"><label>ماذا اشتريت؟</label><input id="xItem" list="xItems" autocomplete="off" value="'+esc(x?x.item:'')+'" placeholder="مثال: بنزين، أو مواد غذائية - حليب"><datalist id="xItems">'+items.map(function(i){ return '<option value="'+esc(i)+'">'; }).join('')+'</datalist>'+
+      '<div class="autocat" id="xAuto"></div></div>'+
+    '<div class="two"><div class="field"><label>المبلغ (ريال)</label><input id="xAmount" type="number" inputmode="decimal" min="0" step="0.01" value="'+(x?x.amount:'')+'"></div>'+
+      '<div class="field"><label>التاريخ</label><input id="xDate" type="date" value="'+(x?x.date:today())+'"></div></div>'+
+    '<div class="field"><label>الفئة</label><select id="xCat">'+catOptions(x?x.cat:'other')+'</select></div>'+
+    '<div class="actions"><button class="btn pri" id="xSave">حفظ</button>'+(x?'<button class="btn danger" id="xDel">حذف</button>':'<button class="btn sec" id="xMore">حفظ وإضافة آخر</button>')+
+    '<button class="btn sec full" id="xNo">إغلاق</button></div>');
+  function auto(){
+    var pe = parseExp($('xItem').value);
+    if(!manual && $('xItem').value.trim()) $('xCat').value = pe.cat;
+    $('xAuto').textContent = $('xItem').value.trim() ? 'التصنيف التلقائي: '+catById(pe.cat).name+(pe.item!==$('xItem').value.trim()?' — البند: '+pe.item:'') : '';
+  }
+  $('xItem').oninput = auto; $('xCat').onchange = function(){ manual = true; }; auto();
+  $('xNo').onclick = function(){ closeSheet(); renderBudget(); };
+  function store(){
+    var a = parseFloat($('xAmount').value), err = $('xErr'), pe = parseExp($('xItem').value);
+    if(!(a>0)){ err.textContent = 'اكتب مبلغًا صحيحًا.'; err.classList.remove('hidden'); return false; }
+    var cat = $('xCat').value, item = pe.item || 'بدون وصف';
+    if(cat !== guessCat(item) && item!=='بدون وصف') b.learn[normAr(item)] = cat; // يتعلّم من تعديلك
+    if(x){ x.amount = round2(a); x.date = $('xDate').value||today(); x.cat = cat; x.item = item; }
+    else b.exp.push({id:uid(), date:$('xDate').value||today(), amount:round2(a), cat:cat, item:item});
+    save(); return true;
+  }
+  $('xSave').onclick = function(){ if(!store()) return; closeSheet(); renderBudget(); toast('تم الحفظ'); };
+  if($('xMore')) $('xMore').onclick = function(){ if(!store()) return; var dt = $('xDate').value; toast('تم الحفظ'); openExpForm(); $('xDate').value = dt; $('xItem').focus(); };
+  if($('xDel')) $('xDel').onclick = function(){ ask('حذف هذا المصروف؟', 'نعم، احذف', function(){ b.exp = b.exp.filter(function(e){ return e.id!==id; }); save(); renderBudget(); }); };
+}
+function openMonthlyForm(kind, id){
+  var b = bud(), arr = b[kind], x = id ? arr.find(function(e){ return e.id===id; }) : null, isFix = kind==='fixed';
+  sheet('<h3>'+(isFix?(x?'تعديل مصروف ثابت':'مصروف ثابت شهري'):(x?'تعديل دخل':'دخل شهري'))+'</h3><div class="err hidden" id="mErr"></div>'+
+    '<div class="field"><label>'+(isFix?'الوصف':'مصدر الدخل')+'</label><input id="mName" value="'+esc(x?x.name:'')+'" placeholder="'+(isFix?'مثال: إيجار، كهرباء، قسط سيارة':'مثال: راتب')+'"><div class="autocat" id="mAuto"></div></div>'+
+    '<div class="field"><label>المبلغ الشهري (ريال)</label><input id="mAmount" type="number" inputmode="decimal" min="0" step="0.01" value="'+(x?x.amount:'')+'"></div>'+
+    (isFix?'<div class="field"><label>الفئة</label><select id="mCat">'+catOptions(x?(x.cat||guessCat(x.name)):'other')+'</select></div>':'')+
+    '<div class="actions"><button class="btn pri" id="mSave">حفظ</button>'+(x?'<button class="btn danger" id="mDel">حذف</button>':'<button class="btn sec" id="mNo">إلغاء</button>')+'</div>');
+  var manual = !!x;
+  if(isFix){ $('mName').oninput = function(){ if(!manual) $('mCat').value = guessCat($('mName').value); $('mAuto').textContent = $('mName').value.trim() ? 'التصنيف التلقائي: '+catById(guessCat($('mName').value)).name : ''; }; $('mCat').onchange = function(){ manual = true; }; }
+  if($('mNo')) $('mNo').onclick = closeSheet;
+  $('mSave').onclick = function(){
+    var n = $('mName').value.trim(), a = parseFloat($('mAmount').value), err = $('mErr');
+    if(!n || !(a>0)){ err.textContent = 'اكتب الوصف والمبلغ.'; err.classList.remove('hidden'); return; }
+    var o = {name:n, amount:round2(a)}; if(isFix) o.cat = $('mCat').value;
+    if(x) Object.assign(x, o); else { o.id = uid(); arr.push(o); }
+    save(); closeSheet(); renderBudget(); toast('تم الحفظ');
+  };
+  if($('mDel')) $('mDel').onclick = function(){ ask('حذف «'+x.name+'»؟', 'نعم، احذف', function(){ b[kind] = arr.filter(function(e){ return e.id!==id; }); save(); renderBudget(); }); };
+}
+/* يوزّع المتبقي الشهري على الديون غير المجدولة بنسبة كل دين، وينشئ جدولة سريعة لكل شخص */
+function buildPlan(f){
+  var b = bud(), cap = f.cap, list = f.uns.map(function(p){ var d = schedOwed(p); return {p:p, d:d, a:Math.max(1, Math.ceil(cap*d/f.owedUns))}; });
+  var start = f.next+'-01';
+  sheet('<h3>خطة السداد المقترحة</h3><p class="msg">'+money(cap)+' شهريًا تُوزَّع على '+countTxt(list.length,'شخص واحد','شخصين','أشخاص','شخصًا')+' بنسبة دين كل واحد، يوم '+b.payDay+' من كل شهر، ابتداءً من '+monthLabel(f.next)+':</p>'+
+    '<div style="margin:10px 0">'+list.map(function(x){ var n = Math.ceil(x.d/x.a - 0.0001);
+      return '<div class="lrow"><span class="n">'+esc(x.p.name)+'<small>الدين '+money(x.d)+' · '+countTxt(n,'دفعة واحدة','دفعتان','دفعات','دفعة')+'</small></span><b>'+money(x.a)+' / شهر</b></div>'; }).join('')+'</div>'+
+    '<p class="hint">تُنشأ جدولة لكل شخص، وتصلك التنبيهات حسبها، وتستطيع تعديل أي جدولة من صفحة الشخص.</p>'+
+    '<div class="actions"><button class="btn pri" id="plOk">اعتماد الخطة</button><button class="btn sec" id="plNo">إلغاء</button></div>');
+  $('plNo').onclick = closeSheet;
+  $('plOk').onclick = function(){
+    list.forEach(function(x){
+      x.p.sched = {mode:'quick', freq:'monthly', day:b.payDay, wday:0, start:start, amount:x.a,
+        paidAtStart: round2(schedEntries(x.p).reduce(function(a,e){ return a+paid(e); },0))};
+    });
+    save(); closeSheet(); renderBudget(); toast('اعتُمدت الخطة لـ '+countTxt(list.length,'شخص واحد','شخصين','أشخاص','شخصًا'));
+  };
+}
+
 /* ============ الإعدادات ============ */
 function renderSettings(){
   $('title').textContent = 'الإعدادات';
@@ -1619,7 +1968,7 @@ function renderSettings(){
       '<div class="actions"><button class="btn pri" id="exp">حفظ نسخة احتياطية</button><button class="btn sec" id="imp">استرجاع نسخة</button></div>'+
       '<input type="file" id="impFile" accept=".json,application/json" class="hidden"></div>')+
     '<div class="set"><h4>حذف كل البيانات</h4><p>يحذف كل الأشخاص والحقوق والدفعات من هذا الجوال نهائيًا.</p><button class="btn danger" id="wipe">حذف كل البيانات</button></div>'+
-    '<div class="hint" style="text-align:center;margin-top:16px">الحقوق المالية — الإصدار 8</div>';
+    '<div class="hint" style="text-align:center;margin-top:16px">الحقوق المالية — الإصدار 9</div>';
   function ownerPrev(){
     var tmp = {name:$('oName').value.trim(), phone:$('oPhone').value.trim(), sign:$('oSign').value.trim()}, keep = db.owner;
     db.owner = tmp; var sg = signLines(); db.owner = keep;
@@ -1646,7 +1995,7 @@ function renderSettings(){
   };
 }
 function exportData(){
-  var data = JSON.stringify({app:'huquq', version:1, exported:new Date().toISOString(), owner:db.owner||null, people:db.people, entries:db.entries}, null, 1);
+  var data = JSON.stringify({app:'huquq', version:1, exported:new Date().toISOString(), owner:db.owner||null, budget:db.budget||null, people:db.people, entries:db.entries}, null, 1);
   var blob = new Blob([data], {type:'application/json'});
   var a = document.createElement('a'); a.href = URL.createObjectURL(blob);
   a.download = 'الحقوق-المالية-نسخة-'+today()+'.json';
@@ -1662,7 +2011,7 @@ function importData(ev){
       var d = JSON.parse(rd.result);
       if(d.app!=='huquq' || !Array.isArray(d.people) || !Array.isArray(d.entries)) throw 0;
       ask('سيتم استبدال البيانات الحالية بما في النسخة ('+d.people.length+' شخص، '+d.entries.length+' حق). متابعة؟', 'نعم، استرجع', function(){
-        db.people=d.people; db.entries=d.entries; if(d.owner) db.owner=d.owner; save(); go('home'); toast('تم استرجاع النسخة');
+        db.people=d.people; db.entries=d.entries; if(d.owner) db.owner=d.owner; if(d.budget) db.budget=d.budget; save(); go('home'); toast('تم استرجاع النسخة');
       }, true);
     }catch(e){ info('هذا الملف ليس نسخة احتياطية صحيحة من تطبيق الحقوق المالية.'); }
   };
