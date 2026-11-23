@@ -836,6 +836,9 @@ function renderHome(){
       (t.net===0?'متعادل':(t.net>0?'لك ':'عليك ')+money(Math.abs(t.net)))+'</div></div>'+
   '</div>';
   html += finCta();
+  var bk = bkGet();
+  if(!PREVIEW && bk.connected && hasData() && (!bk.lastAt || Date.now()-bk.lastAt >= DRIVE_EVERY))
+    html += '<button class="sched-cta" id="bkCta"><i>☁</i><span><b>انسخ إلى Google Drive الآن</b><br>'+(bk.lastAt?'آخر نسخة: '+fmtTime(bk.lastAt):'لم تُرفع نسخة بعد')+'. ضغطة واحدة تكفي.</span></button>';
   if(!owner().name && db.entries.length) html += '<button class="sched-cta" id="ownerCta"><i>✎</i><span><b>أضف اسمك وتوقيعك</b><br>ليظهرا في رسائل الواتساب وكشوف الحساب التي ترسلها.</span></button>';
   if(t.late) html += '<div class="alert">⚠ يوجد '+t.late+' '+(t.late===1?'حق متأخر':'حقوق متأخرة')+' عن موعد السداد</div>';
   var up = upcoming(14);
@@ -913,6 +916,11 @@ function renderHome(){
   document.querySelectorAll('.sum .box.f').forEach(function(b){ b.onclick=function(){ state.filter=b.dataset.sf; state.sub=''; renderHome(); var h=$('lhead'); if(h) h.scrollIntoView({behavior:'smooth', block:'start'}); }; });
   document.querySelectorAll('.person,.uprow').forEach(function(b){ b.onclick=function(){ go('person', b.dataset.p); }; });
   if($('ownerCta')) $('ownerCta').onclick = function(){ go('settings'); };
+  if($('bkCta')) $('bkCta').onclick = function(){
+    var bt = $('bkCta'); bt.disabled = true; bt.querySelector('b').textContent = 'جارٍ الرفع...';
+    driveBackup(true).then(function(){ bkPatch({due:false}); toast('تم رفع النسخة ✓'); renderHome(); })
+      .catch(function(e){ renderHome(); info('تعذّر النسخ: '+(e.message||e)); });
+  };
   if($('finCta')) $('finCta').onclick = function(){ state.bMonth = today().slice(0,7); go('budget'); };
 }
 
@@ -1784,7 +1792,7 @@ function remindOnOpen(){
 }
 
 /* ============ النسخ الاحتياطي إلى Google Drive ============
-   - مفتاح الربط GOOGLE_CLIENT_ID من مشروع Google Cloud (نوع Web، والمصدر المسموح https://naser2777.github.io)
+   - مفتاح الربط GOOGLE_CLIENT_ID من مشروع Google Cloud (نوع Web، والمصدر المسموح https://huquq-app.github.io)
    - الصلاحية drive.file: التطبيق يرى فقط الملفات التي أنشأها هو، داخل مجلد DRIVE_FOLDER
    - النسخ التلقائي عند فتح التطبيق إذا مرّت 12 ساعة على آخر نسخة (لا يعمل التطبيق وهو مغلق)
    - ملف واحد DRIVE_FILE يُحدَّث في كل مرة (Drive يحفظ إصداراته السابقة 30 يومًا) */
@@ -1823,16 +1831,16 @@ function getToken(interactive, chooseAccount){
           .then(function(x){ return x.ok ? x.json() : {}; }).catch(function(){ return {}; })
           .then(function(u){ bkPatch({email:u.email||'', folderId:null, fileId:null}); res(r.access_token); });
       },
-      error_callback: function(err){ rej(new Error(err && err.type==='popup_closed' ? 'أُغلقت نافذة Google قبل الإكمال' : 'لم تُفتح نافذة Google')); }
+      error_callback: function(err){ var e2 = new Error(err && err.type==='popup_closed' ? 'أُغلقت نافذة Google قبل الإكمال' : 'لم تُفتح نافذة Google (قد يكون الجوال منعها)'); e2.code = err && err.type; rej(e2); }
     });
     c.requestAccessToken();
   }); });
 }
 function gfetch(token, url, opt){
   opt = opt || {}; opt.headers = Object.assign({Authorization:'Bearer '+token}, opt.headers || {});
-  return fetch(url, opt).then(function(r){
+  return fetch(url, opt).catch(function(){ throw new Error('لا يوجد اتصال بالإنترنت'); }).then(function(r){
     if(r.status===401) bkPatch({token:null});
-    if(!r.ok){ var er = new Error('رد Google: '+r.status); er.status = r.status; throw er; }
+    if(!r.ok){ var er = new Error(r.status===401?'انتهت صلاحية الدخول، أعد المحاولة':r.status===403?'Google رفض الطلب (صلاحية أو حد الاستخدام)':r.status===404?'الملف غير موجود في Drive':'رد Google: '+r.status); er.status = r.status; throw er; }
     return r;
   });
 }
@@ -1851,6 +1859,21 @@ function stampNow(){
   var d = new Date(); d.setMinutes(d.getMinutes()-d.getTimezoneOffset());
   return d.toISOString().slice(0,16).replace('T',' ').replace(':','-');
 }
+function hasData(){ return db.people.length>0 || db.entries.length>0 || !!(db.budget && ((db.budget.exp||[]).length || (db.budget.fixed||[]).length || (db.budget.income||[]).length)); }
+function validBackup(d){ return d && d.app==='huquq' && Array.isArray(d.people) && Array.isArray(d.entries); }
+function backupSummary(d){ if(!d.people.length && !d.entries.length) return 'لا بيانات'; return countTxt(d.people.length,'شخص واحد','شخصان','أشخاص','شخصًا')+'، '+countTxt(d.entries.length,'حق واحد','حقان','حقوق','حقًا'); }
+/* يستبدل البيانات بنسخة، بعد حفظ البيانات الحالية محليًا احتياطًا */
+function applyBackup(d){
+  try{ localStorage.setItem('huquq-before-restore', JSON.stringify({at:Date.now(), people:db.people, entries:db.entries, owner:db.owner||null, budget:db.budget||null})); }catch(e){}
+  db.people = d.people; db.entries = d.entries; if(d.owner) db.owner = d.owner; if(d.budget) db.budget = d.budget;
+  migrateSched(); save();
+}
+/* ملف النسخة في Drive إن وُجد: {id, modifiedTime} */
+function findBackupFile(token, fid){
+  var q = encodeURIComponent("'"+fid+"' in parents and name='"+DRIVE_FILE+"' and trashed=false");
+  return gfetch(token, GD+'?q='+q+'&fields=files(id,modifiedTime)').then(function(r){ return r.json(); }).then(function(j){ return (j.files && j.files[0]) || null; });
+}
+function readJson(token, url){ return gfetch(token, url).then(function(r){ return r.json(); }); }
 function backupJson(){ return JSON.stringify({app:'huquq', version:3, exported:new Date().toISOString(), owner:db.owner||null, budget:db.budget||null, people:db.people, entries:db.entries}); }
 function listBackups(token, fid){
   var q = encodeURIComponent("'"+fid+"' in parents and trashed=false");
@@ -1898,9 +1921,9 @@ function autoBackup(){
   var b = bkGet();
   if(PREVIEW || !GOOGLE_CLIENT_ID || !b.connected) return;
   if(b.lastAt && Date.now()-b.lastAt < DRIVE_EVERY) return;
-  if(navigator.onLine===false) return;
-  driveBackup(false).then(function(){ toast('تم النسخ الاحتياطي إلى Google Drive ✓'); })
-    .catch(function(){ toast('تعذّر النسخ إلى Drive، افتح الإعدادات للتفاصيل'); });
+  if(navigator.onLine===false || !hasData()) return;
+  driveBackup(false).then(function(){ bkPatch({due:false}); toast('تم النسخ الاحتياطي إلى Google Drive ✓'); if(state.view==='home') renderHome(); })
+    .catch(function(e){ bkPatch({due:true}); if(state.view==='home') renderHome(); if(!e || e.code!=='popup_failed_to_open') toast('تعذّر النسخ إلى Drive، اضغط «انسخ الآن» في الرئيسية'); });
 }
 function fmtTime(ms){
   var d = new Date(ms), p = function(n){ return (n<10?'0':'')+n; };
@@ -1926,34 +1949,68 @@ function driveSection(){
 }
 function bindDrive(){
   function busy(id, txt){ var el = $(id); if(el){ el.disabled = true; el.textContent = txt; } }
+  /* بعد اختيار الحساب: إن وُجدت نسخة سابقة في Drive نسأل قبل الكتابة فوقها */
+  function connectFlow(label){
+    return getToken(true, true).then(function(token){
+      return ensureFolder(token).then(function(fid){ return findBackupFile(token, fid).then(function(f){
+        if(!f) return driveBackup(true).then(function(){ toast(label+' ورُفعت أول نسخة ✓'); renderSettings(); });
+        bkPatch({fileId:f.id});
+        return readJson(token, GD+'/'+f.id+'?alt=media').then(function(d){
+          if(!validBackup(d)) return driveBackup(true).then(function(){ renderSettings(); });
+          bkPatch({connected:true, lastErr:''}); renderSettings();
+          var when = f.modifiedTime ? fmtTime(Date.parse(f.modifiedTime)) : '';
+          sheet('<h3>وُجدت نسخة سابقة في Drive</h3><p class="msg">في هذا الحساب نسخة محفوظة '+(when?'بتاريخ '+when:'')+' فيها <b>'+backupSummary(d)+'</b>.'+
+            (hasData()?'<br>وعلى هذا الجهاز: <b>'+backupSummary(db)+'</b>.':'<br>وهذا الجهاز لا يحتوي بيانات بعد.')+'</p>'+
+            '<div class="actions"><button class="btn pri full" id="cRestore">استرجاع النسخة من Drive إلى هذا الجهاز</button>'+
+            (hasData()?'<button class="btn danger full" id="cOverwrite">استبدال نسخة Drive ببيانات هذا الجهاز</button>':'')+
+            '<button class="btn sec full" id="cLater">إلغاء (بلا ربط)</button></div>'+
+            '<div class="hint" style="margin-top:8px">لن يُرفع شيء إلى Drive حتى تختار.</div>');
+          $('cLater').onclick = function(){ bkSet({}); closeSheet(); renderSettings(); toast('أُلغي الربط، ولم يتغير شيء'); };
+          $('cRestore').onclick = function(){ applyBackup(d); bkPatch({lastAt:Date.now()}); closeSheet(); go('home'); toast('تم استرجاع النسخة ✓'); };
+          if($('cOverwrite')) $('cOverwrite').onclick = function(){ closeSheet(); driveBackup(true).then(function(){ toast('رُفعت بيانات هذا الجهاز ✓'); renderSettings(); }).catch(function(e){ info('تعذّر الرفع: '+(e.message||e)); }); };
+        });
+      }); });
+    });
+  }
   if($('drvOn')) $('drvOn').onclick = function(){
     busy('drvOn','جارٍ الربط...');
-    driveBackup(true, true).then(function(){ toast('تم الربط ورُفعت أول نسخة ✓'); renderSettings(); })
-      .catch(function(e){ renderSettings(); info('لم يكتمل الربط: '+(e.message||e)+'\nتأكد من اتصال الإنترنت ثم حاول مرة أخرى.'); });
+    connectFlow('تم الربط').catch(function(e){ renderSettings(); info('لم يكتمل الربط: '+(e.message||e)+'\nتأكد من اتصال الإنترنت ثم حاول مرة أخرى.'); });
   };
   if($('drvNow')) $('drvNow').onclick = function(){
-    busy('drvNow','جارٍ الرفع...');
-    driveBackup(true).then(function(){ toast('تم رفع النسخة ✓'); renderSettings(); })
-      .catch(function(){ renderSettings(); });
+    function up(){ busy('drvNow','جارٍ الرفع...'); driveBackup(true).then(function(){ bkPatch({due:false}); toast('تم رفع النسخة ✓'); renderSettings(); })
+      .catch(function(e){ renderSettings(); info('تعذّر الرفع: '+(e.message||e)); }); }
+    if(!hasData()) return ask('هذا الجهاز لا يحتوي بيانات. الرفع الآن سيجعل نسخة Drive فارغة (تبقى الإصدارات السابقة 30 يومًا). متابعة؟', 'نعم، ارفع', up);
+    up();
   };
   if($('drvRestore')) $('drvRestore').onclick = function(){
     busy('drvRestore','جارٍ التحميل...');
     getToken(true).then(function(token){
-      return ensureFolder(token).then(function(fid){ return listBackups(token, fid); }).then(function(files){
-        renderSettings();
-        if(!files.length) return info('لا توجد نسخ في Drive بعد.');
-        sheet('<h3>اختر النسخة</h3><p class="msg">الأحدث في الأعلى.</p><div class="bklist">'+files.slice(0,10).map(function(f){
-          return '<button data-f="'+esc(f.id)+'">'+esc(f.name.replace('.json',''))+'</button>';
-        }).join('')+'</div><button class="btn sec full" id="bkNo">إلغاء</button>');
-        $('bkNo').onclick = closeSheet;
-        document.querySelectorAll('.bklist button').forEach(function(btn){ btn.onclick = function(){
-          gfetch(token, GD+'/'+btn.dataset.f+'?alt=media').then(function(r){ return r.json(); }).then(function(d){
-            if(d.app!=='huquq' || !Array.isArray(d.people) || !Array.isArray(d.entries)) throw new Error('bad');
-            ask('سيتم استبدال البيانات الحالية بهذه النسخة ('+d.people.length+' شخص، '+d.entries.length+' حق). متابعة؟', 'نعم، استرجع', function(){
-              db.people = d.people; db.entries = d.entries; if(d.owner) db.owner = d.owner; if(d.budget) db.budget = d.budget; save(); go('home'); toast('تم استرجاع النسخة');
-            }, true);
-          }).catch(function(){ info('تعذّر قراءة هذه النسخة.'); });
-        }; });
+      return ensureFolder(token).then(function(fid){
+        return Promise.all([findBackupFile(token, fid), listBackups(token, fid)]);
+      }).then(function(r){
+        var main = r[0], others = r[1].filter(function(f){ return !main || f.id!==main.id; });
+        var revs = main ? readJson(token, GD+'/'+main.id+'/revisions?fields=revisions(id,modifiedTime)&pageSize=200').then(function(j){ return (j.revisions||[]).slice().reverse(); }).catch(function(){ return []; }) : Promise.resolve([]);
+        return revs.then(function(rv){
+          renderSettings();
+          var opts = [];
+          if(main) opts.push({url:GD+'/'+main.id+'?alt=media', t:'أحدث نسخة'+(main.modifiedTime?' — '+fmtTime(Date.parse(main.modifiedTime)):'')});
+          rv.slice(1, 30).forEach(function(v){ opts.push({url:GD+'/'+main.id+'/revisions/'+v.id+'?alt=media', t:'إصدار '+fmtTime(Date.parse(v.modifiedTime))}); });
+          others.forEach(function(f){ opts.push({url:GD+'/'+f.id+'?alt=media', t:f.name.replace('.json','')+(f.createdTime?' — '+fmtTime(Date.parse(f.createdTime)):'')}); });
+          if(!opts.length) return info('لا توجد نسخ في Drive بعد.');
+          sheet('<h3>اختر النسخة</h3><p class="msg">الأحدث في الأعلى. يحتفظ Drive بالإصدارات السابقة نحو 30 يومًا.</p><div class="bklist">'+opts.map(function(o, i){
+            return '<button data-i="'+i+'">'+esc(o.t)+'</button>';
+          }).join('')+'</div><button class="btn sec full" id="bkNo">إلغاء</button>');
+          $('bkNo').onclick = closeSheet;
+          document.querySelectorAll('.bklist button').forEach(function(btn){ btn.onclick = function(){
+            btn.disabled = true; btn.textContent = 'جارٍ القراءة...';
+            readJson(token, opts[Number(btn.dataset.i)].url).then(function(d){
+              if(!validBackup(d)) throw new Error('bad');
+              ask('سيتم استبدال البيانات الحالية ('+backupSummary(db)+') بهذه النسخة ('+backupSummary(d)+'). متابعة؟', 'نعم، استرجع', function(){
+                applyBackup(d); go('home'); toast('تم استرجاع النسخة ✓');
+              }, true);
+            }).catch(function(){ info('تعذّر قراءة هذه النسخة.'); });
+          }; });
+        });
       });
     }).catch(function(e){ renderSettings(); info('تعذّر الوصول إلى Drive: '+(e.message||e)); });
   };
@@ -2870,7 +2927,7 @@ function renderSettings(){
       '<div class="actions"><button class="btn pri" id="exp">حفظ نسخة احتياطية</button><button class="btn sec" id="imp">استرجاع نسخة</button></div>'+
       '<input type="file" id="impFile" accept=".json,application/json" class="hidden"></div>')+
     '<div class="set"><h4>حذف كل البيانات</h4><p>يحذف كل الأشخاص والحقوق والدفعات من هذا الجوال نهائيًا.</p><button class="btn danger" id="wipe">حذف كل البيانات</button></div>'+
-    '<div class="hint" style="text-align:center;margin-top:16px">الحقوق المالية — الإصدار 17</div>';
+    '<div class="hint" style="text-align:center;margin-top:16px">الحقوق المالية — الإصدار 18</div>';
   function ownerPrev(){
     var tmp = {name:$('oName').value.trim(), phone:$('oPhone').value.trim(), sign:$('oSign').value.trim()}, keep = db.owner;
     db.owner = tmp; var sg = signLines(); db.owner = keep;
@@ -2912,9 +2969,9 @@ function importData(ev){
   rd.onload = function(){
     try{
       var d = JSON.parse(rd.result);
-      if(d.app!=='huquq' || !Array.isArray(d.people) || !Array.isArray(d.entries)) throw 0;
-      ask('سيتم استبدال البيانات الحالية بما في النسخة ('+d.people.length+' شخص، '+d.entries.length+' حق). متابعة؟', 'نعم، استرجع', function(){
-        db.people=d.people; db.entries=d.entries; if(d.owner) db.owner=d.owner; if(d.budget) db.budget=d.budget; save(); go('home'); toast('تم استرجاع النسخة');
+      if(!validBackup(d)) throw 0;
+      ask('سيتم استبدال البيانات الحالية ('+backupSummary(db)+') بما في النسخة ('+backupSummary(d)+'). متابعة؟', 'نعم، استرجع', function(){
+        applyBackup(d); go('home'); toast('تم استرجاع النسخة ✓');
       }, true);
     }catch(e){ info('هذا الملف ليس نسخة احتياطية صحيحة من تطبيق الحقوق المالية.'); }
   };
