@@ -1,5 +1,5 @@
 // غيّر رقم الإصدار مع كل تحديث للتطبيق
-var CACHE = 'huquq-v16';
+var CACHE = 'huquq-v17';
 var FONTS = 'huquq-fonts'; // الخطوط تُحفظ أول مرة وتبقى عبر التحديثات
 var FILES = ['./', './index.html', './manifest.json', './icon-192.png', './icon-512.png'];
 

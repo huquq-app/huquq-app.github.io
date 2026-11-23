@@ -647,6 +647,42 @@ function paySched(p, amount, date, note){
     var x = round2(Math.min(r, left)); e.payments.push({id:uid(), amount:x, date:date, note:note||'سداد حسب الجدولة'}); left = round2(left-x);
   });
 }
+/* يوزّع ما بقي من ديون الشخص (علي له، بلا أقساط) على مواعيد شهرية داخل كل حق، الأقدم أولًا.
+   ما سُدِّد سابقًا يُكتب موعدًا أول مسدَّدًا، فلا تتزحزح المواعيد. */
+function planPersonDebts(p, inst, firstDate){
+  var i = 0, used = 0;
+  schedEntries(p).slice().sort(function(a,b){ return (a.date||'').localeCompare(b.date||''); }).forEach(function(e){
+    var left = remaining(e); if(left<=0) return;
+    var rows = []; if(paid(e)>0) rows.push({date:e.date||today(), amount:paid(e)});
+    while(left>0.004){
+      var a = round2(Math.min(inst-used, left)); rows.push({date:addPeriod(firstDate, i, 'monthly'), amount:a});
+      left = round2(left-a); used = round2(used+a); if(used>=inst-0.004){ i++; used = 0; }
+    }
+    e.pm = 'irr'; e.plan = {rows:rows}; e.due = '';
+  });
+}
+/* تحويل جدولة الشخص القديمة (p.sched) إلى مواعيد داخل حقوقه، مرة واحدة */
+function migrateSched(){
+  var ch = false;
+  db.people.forEach(function(p){
+    if(!p.sched) return;
+    try{
+      var st = schedRows(p).filter(function(r){ return r.rest>0; }).map(function(r){ return {date:r.date, amount:r.rest}; });
+      schedEntries(p).slice().sort(function(a,b){ return (a.date||'').localeCompare(b.date||''); }).forEach(function(e){
+        var rem = remaining(e); if(rem<=0) return;
+        var out = []; if(paid(e)>0) out.push({date:e.date||today(), amount:paid(e)});
+        while(rem>0.004 && st.length){
+          var r = st[0], a = round2(Math.min(r.amount, rem)); out.push({date:r.date, amount:a});
+          rem = round2(rem-a); r.amount = round2(r.amount-a); if(r.amount<=0.004) st.shift();
+        }
+        if(rem>0.004) out.push({date: out.length ? out[out.length-1].date : today(), amount:rem});
+        e.pm = 'irr'; e.plan = {rows:out}; e.due = '';
+      });
+    }catch(x){}
+    delete p.sched; ch = true;
+  });
+  if(ch) save();
+}
 function dueOf(e){ if(remaining(e)<=0 || pmOf(e)==='open' && !hasSched(personById(e.personId))) return ''; if(e.type!=='li' && !e.plan && hasSched(personById(e.personId))) return ''; if(e.plan){ var x = nextInst(e); return x ? x.date : ''; } return e.due || ''; }
 function isLate(e){ var d = dueOf(e); return !!d && d < today(); }
 /* المبلغ المطلوب الآن: للأقساط = المتأخر مع القسط القادم، وإلا المتبقي كله */
@@ -759,7 +795,7 @@ function renderHome(){
   if(t.late) html += '<div class="alert">⚠ يوجد '+t.late+' '+(t.late===1?'حق متأخر':'حقوق متأخرة')+' عن موعد السداد</div>';
   var up = upcoming(14);
   if(up.length){
-    html += '<div class="up"><h4>القادم خلال أسبوعين</h4>'+up.slice(0,6).map(function(x){
+    html += '<div class="up"><h4>المواعيد القريبة</h4>'+up.slice(0,6).map(function(x){
       return '<button class="uprow" data-p="'+x.p.id+'"><span class="when '+whenCls(x.date)+'">'+whenLabel(x.date)+'</span>'+
         '<div class="info"><div class="name">'+esc(x.p.name)+'</div><div class="meta">'+esc(x.label)+' · '+fmtDate(x.date)+(x.e.reason?' · '+esc(x.e.reason):'')+'</div></div>'+
         '<div class="amt '+(x.e.type==='li'?'g':'r')+'">'+money(x.amount)+'<div class="meta">'+(x.e.type==='li'?'تستلمه':'تدفعه')+'</div></div></button>';
@@ -857,7 +893,7 @@ function renderPerson(){
       (PREVIEW?'':'<button class="btn sec full" id="stBtn">إرسال كشف موقّع (صورة)</button>')+
     '</div></div>';
 
-  html += schedCard(p);
+  html += dueCard(p);
   var es = entriesOf(p.id).slice().sort(function(a,b){
     var ra=remaining(a)>0, rb=remaining(b)>0; if(ra!==rb) return ra?-1:1;
     return (b.date||'').localeCompare(a.date||'');
@@ -897,7 +933,7 @@ function renderPerson(){
   $('app').innerHTML = html;
 
   $('editP').onclick = function(){ openPersonForm(p); };
-  bindSched(p);
+  document.querySelectorAll('[data-paydue]').forEach(function(b){ b.onclick = function(){ openDuePay(p, b.dataset.paydue); }; });
   $('addE').onclick = function(){ openEntryForm(null, p.id); };
   if($('prBtn')) $('prBtn').onclick = function(){ printStatement(p); };
   if($('stBtn')) $('stBtn').onclick = function(){ openSignedStatement(p); };
@@ -968,6 +1004,53 @@ function openItemForm(entryId){
     toast('تمت الإضافة، المجموع '+money(total(e)));
     var d = $('iDesc').value, dt = $('iDate').value;
     openItemForm(e.id); $('iDesc').value = d; $('iDate').value = dt; $('iAmount').focus();
+  };
+}
+/* المستحق من عدة حقوق مع نفس الشخص — يُحسب من طريقة سداد كل حق، ولا يُكتب شيء مرتين */
+function dueInfo(p, t){
+  var es = entriesOf(p.id).filter(function(e){ return (t==='li' ? e.type==='li' : e.type!=='li') && remaining(e)>0; });
+  var dated = es.filter(function(e){ return dueOf(e); }).sort(function(a,b){ return dueOf(a).localeCompare(dueOf(b)); });
+  var now = round2(dated.filter(function(e){ return dueOf(e)<=today(); }).reduce(function(a,e){ return a+dueAmount(e); },0));
+  var nx = dated[0] || null;
+  var nxAmt = nx ? round2(dated.filter(function(e){ return dueOf(e)===dueOf(nx); }).reduce(function(a,e){ return a+dueAmount(e); },0)) : 0;
+  return {es:es, dated:dated, now:now, next:nx, nxAmt:nxAmt, def: now>0 ? now : nxAmt,
+    all: round2(es.reduce(function(a,e){ return a+remaining(e); },0))};
+}
+function dueCard(p){
+  var h = '';
+  ['alay','li'].forEach(function(t){
+    var d = dueInfo(p, t); if(d.es.length<2 || !d.dated.length) return;
+    var me = t==='alay';
+    h += '<div class="sched"><div class="sh"><h4>'+(me?'المستحق عليك له':'المستحق لك عنده')+'</h4></div><div class="line">'+
+      (d.now>0 ? '<span class="r">مستحق الآن: <b>'+money(d.now)+'</b></span>' :
+        'أقرب موعد: <b>'+fmtDate(dueOf(d.next))+'</b> ('+whenLabel(dueOf(d.next))+') بمبلغ <b>'+money(d.nxAmt)+'</b>')+
+      '<br>المتبقي كله في '+countTxt(d.es.length,'حق واحد','حقين','حقوق','حقًا')+': <b>'+money(d.all)+'</b></div>'+
+      '<div class="ebtns"><button class="smallbtn pri" data-paydue="'+t+'">'+(me?'سداد المستحق':'استلام المستحق')+' ('+money(d.def)+')</button></div></div>';
+  });
+  return h;
+}
+/* دفعة واحدة تُوزَّع على الحقوق: أولًا ما حلّ موعده (الأقدم موعدًا أولًا)، ثم الباقي */
+function openDuePay(p, t){
+  var d = dueInfo(p, t), me = t==='alay';
+  sheet('<h3>'+(me?'سداد المستحق لـ ':'استلام المستحق من ')+esc(p.name)+'</h3><div class="hint" style="margin-bottom:12px;line-height:1.8">'+
+    (d.now>0?'المستحق الآن: <b>'+money(d.now)+'</b><br>':'')+'المتبقي كله: <b>'+money(d.all)+'</b><br>يُوزَّع المبلغ على الحقوق حسب مواعيدها، الأقدم أولًا.</div>'+
+    '<div class="err hidden" id="dpErr"></div>'+
+    '<div class="field"><label>المبلغ (ريال)</label><input id="dpAmount" type="number" inputmode="decimal" min="0" step="0.01" value="'+round2(d.def)+'"></div>'+
+    '<div class="field"><label>التاريخ</label><input id="dpDate" type="date" value="'+today()+'"></div>'+
+    '<div class="field"><label>ملاحظة (اختياري)</label><input id="dpNote" placeholder="مثال: تحويل بنكي، نقدًا..."></div>'+
+    '<div class="actions"><button class="btn pri" id="dpOk">حفظ</button><button class="btn sec" id="dpNo">إلغاء</button></div>');
+  $('dpNo').onclick = closeSheet;
+  $('dpOk').onclick = function(){
+    var a = round2(parseFloat($('dpAmount').value)||0), err = $('dpErr');
+    if(!(a>0)){ err.textContent='اكتب مبلغًا صحيحًا.'; err.classList.remove('hidden'); return; }
+    if(a>d.all){ err.textContent='المبلغ أكبر من المتبقي كله ('+money(d.all)+').'; err.classList.remove('hidden'); return; }
+    var left = a, date = $('dpDate').value||today(), note = $('dpNote').value.trim();
+    var order = d.dated.concat(d.es.filter(function(e){ return d.dated.indexOf(e)<0; }));
+    var lim = d.now>0 ? today() : (d.next ? dueOf(d.next) : today());
+    function put(e, cap){ var x = round2(Math.min(cap, remaining(e), left)); if(x>0){ e.payments.push({id:uid(), amount:x, date:date, note:note}); left = round2(left-x); } }
+    d.dated.forEach(function(e){ if(left>0 && dueOf(e)<=lim) put(e, dueAmount(e)); });
+    order.forEach(function(e){ if(left>0) put(e, remaining(e)); });
+    save(); closeSheet(); render(); toast('تم التسجيل');
   };
 }
 function schedCard(p){
@@ -2148,9 +2231,9 @@ function tabSum(f){
     '<button class="smallbtn" style="margin-top:10px" data-tab="cmp">المقارنة التفصيلية</button></div>';
   h += '<div class="fcard"><h4><span>خطة السداد</span></h4>';
   h += '<div class="line">ملتزم به في جدولات وأقساط '+monthLabel(f.next)+': <b>'+money(f.com)+'</b><br>المتبقي لخطة جديدة: <b class="'+(f.cap>0?'g':'r')+'">'+money(Math.max(0,f.cap))+'</b> شهريًا</div>';
-  if(f.owedUns>0) h += '<div class="line">ديون عليك بلا جدولة: <b>'+money(f.owedUns)+'</b> لـ '+countTxt(f.uns.length,'شخص واحد','شخصين','أشخاص','شخصًا')+'</div>'+
+  if(f.owedUns>0) h += '<div class="line">ديون عليك بلا مواعيد سداد: <b>'+money(f.owedUns)+'</b> لـ '+countTxt(f.uns.length,'شخص واحد','شخصين','أشخاص','شخصًا')+'</div>'+
     '<button class="btn pri" style="margin-top:10px" id="bPlan">بناء خطة سداد — تختار من تجدول له</button>';
-  else h += '<div class="line">لا توجد ديون عليك بلا جدولة.</div>';
+  else h += '<div class="line">لا توجد ديون عليك بلا مواعيد سداد.</div>';
   h += '</div>';
   var ns = planSuggestions().length;
   if(ns) h += '<button class="fin-cta" data-tab="plan"><span class="ic">✦</span><span class="tx"><b>'+countTxt(ns,'مقترح واحد','مقترحان','مقترحات','مقترحًا')+' لتحسين خطتك</b><span>مبنية على مقارنة خطتك بصرفك الفعلي.</span></span></button>';
@@ -2267,7 +2350,7 @@ function openPlanBuilder(){
       return '<div class="pick'+(c.on?'':' off')+'"><input type="checkbox" data-i="'+i+'"'+(c.on?' checked':'')+' aria-label="'+esc(c.p.name)+'">'+
         '<div class="n"><b>'+esc(c.p.name)+'</b><small>الدين '+money(c.d)+(c.on&&n?' · '+countTxt(n,'دفعة واحدة','دفعتان','دفعات','دفعة')+' من '+monthLabel(startDate(c.off).slice(0,7)):'')+'</small></div>'+
         '<input type="number" inputmode="decimal" min="0" step="1" data-a="'+i+'" value="'+(c.on&&c.a?c.a:'')+'" placeholder="/ شهر"'+(c.on?'':' disabled')+' aria-label="المبلغ الشهري"></div>';
-    }).join('') : '<div class="line">لا توجد ديون بلا جدولة.</div>';
+    }).join('') : '<div class="line">لا توجد ديون بلا مواعيد سداد.</div>';
     $('pbList').querySelectorAll('[data-i]').forEach(function(cb){ cb.onchange = function(){ cand[cb.dataset.i].on = cb.checked; distribute(); draw(); }; });
     $('pbList').querySelectorAll('[data-a]').forEach(function(inp){ inp.oninput = function(){ cand[inp.dataset.a].a = Math.max(0, parseFloat(inp.value)||0); summary(); }; inp.onchange = draw; });
     summary();
@@ -2290,10 +2373,7 @@ function openPlanBuilder(){
   $('pbOk').onclick = function(){
     var on = cand.filter(function(c){ return c.on && c.a>0; });
     if(!on.length){ $('pbErr').textContent = 'اختر شخصًا واحدًا على الأقل واكتب مبلغه.'; $('pbErr').classList.remove('hidden'); return; }
-    on.forEach(function(c){
-      c.p.sched = {mode:'quick', freq:'monthly', day:day, wday:0, start:startDate(c.off), amount:round2(c.a),
-        paidAtStart: round2(schedEntries(c.p).reduce(function(a,e){ return a+paid(e); },0))};
-    });
+    on.forEach(function(c){ planPersonDebts(c.p, round2(c.a), addPeriod(startDate(c.off).slice(0,8)+('0'+day).slice(-2), 0, 'monthly')); });
     b.payDay = day; save(); closeSheet(); renderBudget();
     toast('اعتُمدت الخطة لـ '+countTxt(on.length,'شخص واحد','شخصين','أشخاص','شخصًا'));
   };
@@ -2425,14 +2505,11 @@ function buildPlan(f){
   sheet('<h3>خطة السداد المقترحة</h3><p class="msg">'+money(cap)+' شهريًا تُوزَّع على '+countTxt(list.length,'شخص واحد','شخصين','أشخاص','شخصًا')+' بنسبة دين كل واحد، يوم '+b.payDay+' من كل شهر، ابتداءً من '+monthLabel(f.next)+':</p>'+
     '<div style="margin:10px 0">'+list.map(function(x){ var n = Math.ceil(x.d/x.a - 0.0001);
       return '<div class="lrow"><span class="n">'+esc(x.p.name)+'<small>الدين '+money(x.d)+' · '+countTxt(n,'دفعة واحدة','دفعتان','دفعات','دفعة')+'</small></span><b>'+money(x.a)+' / شهر</b></div>'; }).join('')+'</div>'+
-    '<p class="hint">تُنشأ جدولة لكل شخص، وتصلك التنبيهات حسبها، وتستطيع تعديل أي جدولة من صفحة الشخص.</p>'+
+    '<p class="hint">تُكتب المواعيد داخل حقوق كل شخص (أقساط بمواعيد)، وتصلك التنبيهات حسبها، وتعدّلها من «تعديل» في الحق نفسه.</p>'+
     '<div class="actions"><button class="btn pri" id="plOk">اعتماد الخطة</button><button class="btn sec" id="plNo">إلغاء</button></div>');
   $('plNo').onclick = closeSheet;
   $('plOk').onclick = function(){
-    list.forEach(function(x){
-      x.p.sched = {mode:'quick', freq:'monthly', day:b.payDay, wday:0, start:start, amount:x.a,
-        paidAtStart: round2(schedEntries(x.p).reduce(function(a,e){ return a+paid(e); },0))};
-    });
+    list.forEach(function(x){ planPersonDebts(x.p, x.a, addPeriod(start.slice(0,8)+('0'+b.payDay).slice(-2), 0, 'monthly')); });
     save(); closeSheet(); renderBudget(); toast('اعتُمدت الخطة لـ '+countTxt(list.length,'شخص واحد','شخصين','أشخاص','شخصًا'));
   };
 }
@@ -2462,7 +2539,7 @@ function renderSettings(){
       '<div class="actions"><button class="btn pri" id="exp">حفظ نسخة احتياطية</button><button class="btn sec" id="imp">استرجاع نسخة</button></div>'+
       '<input type="file" id="impFile" accept=".json,application/json" class="hidden"></div>')+
     '<div class="set"><h4>حذف كل البيانات</h4><p>يحذف كل الأشخاص والحقوق والدفعات من هذا الجوال نهائيًا.</p><button class="btn danger" id="wipe">حذف كل البيانات</button></div>'+
-    '<div class="hint" style="text-align:center;margin-top:16px">الحقوق المالية — الإصدار 14</div>';
+    '<div class="hint" style="text-align:center;margin-top:16px">الحقوق المالية — الإصدار 15</div>';
   function ownerPrev(){
     var tmp = {name:$('oName').value.trim(), phone:$('oPhone').value.trim(), sign:$('oSign').value.trim()}, keep = db.owner;
     db.owner = tmp; var sg = signLines(); db.owner = keep;
@@ -2570,6 +2647,7 @@ document.addEventListener('visibilitychange', function(){
 });
 
 /* ============ البدء ============ */
+migrateSched();
 buildPad();
 render();
 showLock(db.pin ? 'enter' : 'setup');
