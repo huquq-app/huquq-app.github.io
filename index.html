@@ -377,6 +377,28 @@ header h1{font-size:20px;letter-spacing:.2px}
 .sheet::before{background:var(--gold-grad);opacity:.6}
 .listsum{border:1px solid rgba(180,138,47,.22)}
 
+/* تبويبات وضعي المالي */
+.tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:4px;margin-bottom:14px;box-shadow:var(--shadow);position:sticky;top:calc(env(safe-area-inset-top,0px) + 72px);z-index:4}
+.tab{padding:10px 2px;border-radius:12px;font-weight:600;font-size:14px;color:var(--muted)}
+.tab.on{background:linear-gradient(160deg,var(--brand2),var(--brand));color:#f3e3b5}
+.cmprow{padding:9px 0;border-top:1px solid var(--line)}
+.cmprow .h{display:flex;justify-content:space-between;gap:8px;font-size:14px;margin-bottom:6px}
+.cmprow .h b{font-family:var(--f-head)}
+.cmprow .nums2{display:grid;grid-template-columns:1fr 1fr 1fr;font-size:12px;color:var(--muted);margin-top:4px;text-align:center}
+.cmprow .nums2 b{display:block;font-size:14px;color:var(--ink);font-family:var(--f-head)}
+.track2{height:10px;background:var(--track);border-radius:6px;position:relative;overflow:hidden}
+.track2 i{position:absolute;inset:0 auto 0 0;border-radius:6px;background:linear-gradient(90deg,var(--brand2),#2f8f74)}
+.track2 i.over{background:linear-gradient(90deg,#d9534f,var(--red))}
+.track2 .mk{position:absolute;top:-2px;bottom:-2px;width:2px;background:var(--gold)}
+.sugg{background:var(--gold-soft);border:1px solid rgba(180,138,47,.25);border-radius:14px;padding:12px 14px;margin-top:10px;font-size:14px;line-height:1.85}
+.sugg .smallbtn{margin-top:8px}
+.pick{display:grid;grid-template-columns:auto 1fr 110px;gap:10px;align-items:center;padding:10px 0;border-top:1px solid var(--line)}
+.pick input[type=checkbox]{width:22px;height:22px;accent-color:var(--brand2)}
+.pick .n{font-size:14px;min-width:0}
+.pick .n small{display:block;color:var(--muted);font-size:12px}
+.pick input[type=number]{width:100%;padding:9px 8px;border:1px solid var(--line);border-radius:10px;background:var(--input)}
+.pick.off{opacity:.55}
+.snap{display:flex;justify-content:space-between;gap:8px;font-size:14px;margin-bottom:8px}
 /* نافذة الجدولة */
 .modes{display:grid;gap:8px;margin:12px 0 14px}
 .modes button{display:flex;gap:12px;align-items:center;text-align:right;padding:12px 14px;border:2px solid var(--line);border-radius:14px;background:var(--input);width:100%}
@@ -1856,13 +1878,68 @@ function incTotals(){
   var fx = 0, vr = 0; bud().income.forEach(function(s2){ var v = incomeOf(s2).v; if(s2.kind==='var') vr += v; else fx += v; });
   return {fx:round2(fx), vr:round2(vr), all:round2(fx+vr)};
 }
+/* الخطة = بنود الخطة الشهرية (b.fixed) لكل فئة. الواقع = المصروفات المسجلة (b.exp). */
+function planByCat(){ var o = {}; bud().fixed.forEach(function(x){ var c = x.cat||guessCat(x.name); o[c] = round2((o[c]||0) + x.amount); }); return o; }
+function planTotal(){ return sumArr(bud().fixed); }
+function actByCat(ym){ var o = {}; expOfMonth(ym).forEach(function(x){ o[x.cat] = round2((o[x.cat]||0) + x.amount); }); return o; }
+function objSum(o){ return round2(Object.keys(o).reduce(function(a,k){ return a+o[k]; },0)); }
+/* متوسط الصرف الفعلي: آخر 3 أشهر كاملة منذ أول تسجيل (الشهر الفارغ = 0)، وإلا تقدير من الشهر الحالي */
+function actualAvg(){
+  var b = bud(), cur = today().slice(0,7);
+  if(b.exp.length){
+    var first = b.exp.map(function(e){ return ymKey(e.date); }).sort()[0], ms = [];
+    for(var i=1; i<=3; i++){ var m = addMonthsYM(cur,-i); if(m >= first) ms.push(m); }
+    if(ms.length){
+      var byCat = {}; ms.forEach(function(m){ var o = actByCat(m); Object.keys(o).forEach(function(k){ byCat[k] = (byCat[k]||0) + o[k]; }); });
+      Object.keys(byCat).forEach(function(k){ byCat[k] = round2(byCat[k]/ms.length); });
+      return {has:true, v:objSum(byCat), byCat:byCat, how:'متوسط '+countTxt(ms.length,'شهر','شهرين','أشهر','شهرًا')+' مسجّلة'};
+    }
+    var o = actByCat(cur), t = objSum(o);
+    if(t>0){
+      var d = Number(today().slice(8,10)), days = new Date(Number(cur.slice(0,4)), Number(cur.slice(5,7)), 0).getDate(), fct = days/Math.max(d,1);
+      Object.keys(o).forEach(function(k){ o[k] = round2(o[k]*fct); });
+      return {has:true, v:round2(t*fct), byCat:o, how:'تقدير من مصاريف هذا الشهر حتى الآن', partial:true};
+    }
+  }
+  return {has:false, v:0, byCat:{}, how:'لا توجد مصاريف مسجّلة بعد'};
+}
+function incActual(ym){ var b = bud(), v = 0; b.income.forEach(function(x){ if(x.kind!=='var') v += x.amount||0; }); b.inLog.forEach(function(r){ if(ymKey(r.date)===ym) v += r.amount; }); return round2(v); }
 function finSummary(){
-  var b = bud(), inc = incTotals().all, fix = sumArr(b.fixed), ve = variableEstimate();
-  var free = round2(inc - fix - ve.v), marg = free>0 ? round2(free*b.margin/100) : 0, avail = round2(free - marg);
+  var b = bud(), inc = incTotals().all, pt = planTotal(), aa = actualAvg();
+  function net(x){ var free = round2(inc - x), m = free>0 ? round2(free*b.margin/100) : 0; return round2(free - m); }
+  var ap = net(pt), aact = aa.has ? net(aa.v) : null;
+  var avail = aact==null ? ap : Math.min(ap, aact);
   var next = addMonthsYM(today().slice(0,7), 1), com = commitments(next);
   var uns = db.people.filter(function(p){ return !hasSched(p) && schedOwed(p)>0; });
   var owedUns = round2(uns.reduce(function(a,p){ return a+schedOwed(p); },0));
-  return {inc:inc, fix:fix, ve:ve, marg:marg, avail:avail, com:com, cap:round2(avail-com), uns:uns, owedUns:owedUns, next:next};
+  return {inc:inc, pt:pt, aa:aa, ap:ap, aact:aact, avail:avail, com:com, cap:round2(avail-com), uns:uns, owedUns:owedUns, next:next};
+}
+/* مقترحات تحسين الخطة من مقارنة متوسط الواقع بالخطة */
+function planSuggestions(){
+  var aa = actualAvg(), pc = planByCat(), out = [], cats = {};
+  if(!aa.has) return out;
+  Object.keys(pc).concat(Object.keys(aa.byCat)).forEach(function(k){ cats[k] = 1; });
+  Object.keys(cats).forEach(function(k){
+    var p = pc[k]||0, a = aa.byCat[k]||0, c = catById(k), to = Math.ceil(a/10)*10;
+    if(p===0 && a>=50) out.push({cat:k, to:to, txt:'تصرف على «'+c.name+'» نحو '+money(a)+' شهريًا، ولا يوجد لها بند في خطتك.', act:'أضف بندًا بـ '+money(to)});
+    else if(p>0 && a>p*1.1 && a-p>=50) out.push({cat:k, to:to, txt:'«'+c.name+'»: صرفك الفعلي '+money(a)+' أعلى من خطتك '+money(p)+' بـ '+money(round2(a-p))+'. إما أن ترفع الخطة لتكون واقعية، أو تقلل الصرف عليها.', act:'اجعل الخطة '+money(to)});
+    else if(p>0 && a<p*0.85 && p-a>=50) out.push({cat:k, to:to, txt:'«'+c.name+'»: تصرف '+money(a)+' فقط من خطة '+money(p)+'. خفضها يزيد المتاح للسداد نحو '+money(round2(p-to))+' شهريًا.', act:'خفّض الخطة إلى '+money(to)});
+  });
+  return out;
+}
+function applySuggestion(cat, to){
+  var b = bud(), lines = b.fixed.filter(function(x){ return (x.cat||guessCat(x.name))===cat; });
+  var cur = round2(lines.reduce(function(a,x){ return a+x.amount; },0)), diff = round2(to-cur);
+  if(!lines.length) b.fixed.push({id:uid(), name:catById(cat).name, cat:cat, amount:to});
+  else { var big = lines.sort(function(a,c){ return c.amount-a.amount; })[0]; big.amount = Math.max(0, round2(big.amount+diff)); }
+  save();
+}
+function suggBlock(){
+  var sg = planSuggestions(), aa = actualAvg();
+  var h = '<div class="fcard"><h4><span>مقترحات لتحسين الخطة</span></h4>';
+  if(!aa.has) return h+'<div class="line">تظهر المقترحات بعد أن تسجّل مصاريفك الفعلية في تبويب «الواقع».</div></div>';
+  if(!sg.length) return h+'<div class="line">خطتك قريبة من واقعك ('+aa.how+'). أحسنت.</div></div>';
+  return h+'<div class="hint">مبنية على '+aa.how+'.</div>'+sg.map(function(x,i){ return '<div class="sugg">'+x.txt+'<br><button class="smallbtn pri" data-sugg="'+i+'">'+x.act+'</button></div>'; }).join('')+'</div>';
 }
 function finCta(){
   var b = bud();
@@ -1873,88 +1950,181 @@ function finCta(){
     '<span class="v">'+(f.avail>0?money(f.avail):'—')+'<span style="display:block;font-size:11px;color:var(--muted);font-weight:400">متاح للسداد</span></span></button>';
 }
 function renderBudget(){
-  var b = bud(), ym = state.bMonth || today().slice(0,7), f = finSummary();
+  var b = bud(), tab = state.bTab || 'sum', ym = state.bMonth || today().slice(0,7), f = finSummary();
   $('title').textContent = 'وضعي المالي';
-  var h = '<div class="avail"><div class="lbl">المتاح للسداد شهريًا</div><div class="big">'+(f.avail>0?money(f.avail):money(0))+'</div>'+
-    '<div class="row"><span>الدخل الشهري'+(incTotals().vr>0?' <small style="opacity:.75">(منه متغير '+money(incTotals().vr)+')</small>':'')+'</span><b>'+money(f.inc)+'</b></div>'+
-    '<div class="row"><span>− المصاريف الثابتة</span><b>'+money(f.fix)+'</b></div>'+
-    '<div class="row"><span>− المصاريف المتغيرة</span><b>'+money(f.ve.v)+'</b></div>'+
-    '<div class="row"><span>− احتياطي للطوارئ ('+b.margin+'%)</span><b>'+money(f.marg)+'</b></div>'+
-    '<div class="note">المصاريف المتغيرة: '+f.ve.how+'.'+(f.inc<=0?' أضف دخلك الشهري في الأسفل ليظهر المتاح.':'')+'</div></div>';
-
-  // خطة السداد
+  var h = '<div class="tabs">'+[['sum','الملخص'],['plan','الخطة'],['act','الواقع'],['cmp','المقارنة']].map(function(t){
+    return '<button class="tab'+(tab===t[0]?' on':'')+'" data-tab="'+t[0]+'">'+t[1]+'</button>'; }).join('')+'</div>';
+  if(tab==='act' || tab==='cmp') h += '<div class="mswitch"><button id="mPrev" aria-label="الشهر السابق">→</button><b>'+monthLabel(ym)+'</b><button id="mNext" aria-label="الشهر التالي">←</button></div>';
+  if(tab==='sum') h += tabSum(f);
+  else if(tab==='plan') h += tabPlan(f, ym);
+  else if(tab==='act') h += tabAct(ym);
+  else h += tabCmp(ym, f);
+  $('app').innerHTML = h;
+  bindBudget(ym, f);
+}
+function tabSum(f){
+  var b = bud(), cur = today().slice(0,7), pt = f.pt, act = objSum(actByCat(cur));
+  var h = '<div class="avail"><div class="lbl">المتاح للسداد شهريًا</div><div class="big">'+money(Math.max(0,f.avail))+'</div>'+
+    '<div class="row"><span>الدخل الشهري المتوقع</span><b>'+money(f.inc)+'</b></div>'+
+    '<div class="row"><span>المتاح حسب الخطة</span><b>'+money(f.ap)+'</b></div>'+
+    '<div class="row"><span>المتاح حسب الواقع</span><b>'+(f.aact==null?'—':money(f.aact))+'</b></div>'+
+    '<div class="note">'+(f.aact==null?'سجّل مصاريفك الفعلية في «الواقع» ليظهر المتاح حسب الواقع. ':'المعتمد هو الأقل بينهما احتياطًا. الواقع: '+f.aa.how+'. ')+'بعد خصم احتياطي للطوارئ '+b.margin+'%.'+(f.inc<=0?' أضف دخلك في تبويب «الخطة».':'')+'</div></div>';
+  h += '<div class="fcard"><h4><span>'+monthLabel(cur)+' حتى الآن</span></h4>'+
+    '<div class="snap"><span>صرفت فعليًا</span><b>'+money(act)+'</b></div><div class="snap"><span>من خطة شهرية</span><b>'+money(pt)+'</b></div>'+
+    (pt>0?'<div class="track2"><i class="'+(act>pt?'over':'')+'" style="width:'+Math.min(100, act/pt*100)+'%"></i></div>':'<div class="line">لم تكتب خطتك بعد — من تبويب «الخطة».</div>')+
+    '<button class="smallbtn" style="margin-top:10px" data-tab="cmp">المقارنة التفصيلية</button></div>';
   h += '<div class="fcard"><h4><span>خطة السداد</span></h4>';
-  if(f.inc<=0){ h += '<div class="line">أضف دخلك الشهري ومصاريفك الثابتة أولًا، ثم يحسب التطبيق ما تستطيع سداده.</div>'; }
-  else {
-    h += '<div class="line">ملتزم به في جدولات وأقساط '+monthLabel(f.next)+': <b>'+money(f.com)+'</b><br>المتبقي لخطة جديدة: <b class="'+(f.cap>0?'g':'r')+'">'+money(Math.max(0,f.cap))+'</b> شهريًا</div>';
-    if(f.owedUns>0){
-      h += '<div class="line">ديون عليك بلا جدولة: <b>'+money(f.owedUns)+'</b> لـ '+countTxt(f.uns.length,'شخص واحد','شخصين','أشخاص','شخصًا')+'</div>';
-      if(f.cap>0){
-        var n = Math.ceil(f.owedUns/f.cap - 0.0001);
-        h += '<div class="line">بهذا المبلغ تنتهي منها في <b>'+countTxt(n,'شهر واحد','شهرين','أشهر','شهرًا')+'</b>، تقريبًا في '+monthLabel(addMonthsYM(f.next, n-1))+'.</div>'+
-          '<div class="two" style="margin-top:10px"><div class="field"><label>يوم السداد من كل شهر</label><select id="bDay">'+
-          Array.from({length:28},function(_,i){ return '<option'+(i+1===b.payDay?' selected':'')+'>'+(i+1)+'</option>'; }).join('')+'</select></div>'+
-          '<div class="field"><label>احتياطي الطوارئ</label><select id="bMargin">'+[0,5,10,15,20,25].map(function(m){ return '<option value="'+m+'"'+(m===b.margin?' selected':'')+'>'+m+'%</option>'; }).join('')+'</select></div></div>'+
-          '<button class="btn pri" id="bPlan">بناء خطة السداد</button>';
-      } else {
-        h += '<div class="line r">لا يتبقى مبلغ لخطة جديدة هذا الشهر. راجع مصاريفك في «أين تذهب أموالك» أو قلّل الاحتياطي.</div>'+
-          '<div class="field" style="margin-top:8px"><label>احتياطي الطوارئ</label><select id="bMargin">'+[0,5,10,15,20,25].map(function(m){ return '<option value="'+m+'"'+(m===b.margin?' selected':'')+'>'+m+'%</option>'; }).join('')+'</select></div>';
-      }
-    } else {
-      h += '<div class="line">لا توجد ديون عليك بلا جدولة.</div>'+
-        '<div class="field" style="margin-top:8px"><label>احتياطي الطوارئ</label><select id="bMargin">'+[0,5,10,15,20,25].map(function(m){ return '<option value="'+m+'"'+(m===b.margin?' selected':'')+'>'+m+'%</option>'; }).join('')+'</select></div>';
-    }
-  }
+  h += '<div class="line">ملتزم به في جدولات وأقساط '+monthLabel(f.next)+': <b>'+money(f.com)+'</b><br>المتبقي لخطة جديدة: <b class="'+(f.cap>0?'g':'r')+'">'+money(Math.max(0,f.cap))+'</b> شهريًا</div>';
+  if(f.owedUns>0) h += '<div class="line">ديون عليك بلا جدولة: <b>'+money(f.owedUns)+'</b> لـ '+countTxt(f.uns.length,'شخص واحد','شخصين','أشخاص','شخصًا')+'</div>'+
+    '<button class="btn pri" style="margin-top:10px" id="bPlan">بناء خطة سداد — تختار من تجدول له</button>';
+  else h += '<div class="line">لا توجد ديون عليك بلا جدولة.</div>';
   h += '</div>';
-
-  // أين تذهب أموالك
-  var ex = expOfMonth(ym), byCat = {};
-  b.fixed.forEach(function(x){ var c = x.cat||guessCat(x.name); (byCat[c] = byCat[c]||{t:0,items:{}}); byCat[c].t += x.amount; byCat[c].items[x.name+' (ثابت)'] = (byCat[c].items[x.name+' (ثابت)']||0) + x.amount; });
+  var ns = planSuggestions().length;
+  if(ns) h += '<button class="fin-cta" data-tab="plan"><span class="ic">✦</span><span class="tx"><b>'+countTxt(ns,'مقترح واحد','مقترحان','مقترحات','مقترحًا')+' لتحسين خطتك</b><span>مبنية على مقارنة خطتك بصرفك الفعلي.</span></span></button>';
+  return h;
+}
+function tabPlan(f, ym){
+  var b = bud(), pc = planByCat();
+  var h = incomeBlock(ym);
+  h += '<div class="fcard"><h4><span>خطة الصرف الشهرية</span><b>'+money(f.pt)+'</b></h4>'+
+    '<div class="hint" style="margin-bottom:6px">تقديراتك لما تصرفه كل شهر على كل باب: إيجار، مواد غذائية، بنزين، فواتير... هذه «الخطة»، أما ما تصرفه فعلًا فتسجّله في «الواقع».</div>';
+  var cats = Object.keys(pc).sort(function(a,c){ return pc[c]-pc[a]; });
+  cats.forEach(function(k){
+    h += '<div class="subhead">'+catById(k).name+' — '+money(pc[k])+'</div>'+
+      b.fixed.filter(function(x){ return (x.cat||guessCat(x.name))===k; }).map(function(x){
+        return '<button class="lrow" data-fix="'+x.id+'"><span class="n">'+esc(x.name)+'</span><b>'+money(x.amount)+'</b></button>'; }).join('');
+  });
+  h += '<button class="smallbtn pri" style="margin-top:10px" id="bAdd_fix">+ بند في الخطة</button></div>';
+  h += '<div class="fcard"><h4><span>احتياطي الطوارئ</span></h4><div class="hint" style="margin-bottom:8px">نسبة تُترك من الفائض ولا تدخل في السداد.</div><select id="bMargin" style="width:100%;padding:11px;border:1px solid var(--line);border-radius:12px;background:var(--input)">'+
+    [0,5,10,15,20,25].map(function(m){ return '<option value="'+m+'"'+(m===b.margin?' selected':'')+'>'+m+'%</option>'; }).join('')+'</select></div>';
+  return h + suggBlock();
+}
+function tabAct(ym){
+  var b = bud(), ex = expOfMonth(ym), byCat = {};
   ex.forEach(function(x){ (byCat[x.cat] = byCat[x.cat]||{t:0,items:{}}); byCat[x.cat].t += x.amount; var it = x.item||'بدون وصف'; byCat[x.cat].items[it] = (byCat[x.cat].items[it]||0) + x.amount; });
-  var cats = Object.keys(byCat).map(function(k){ return {c:catById(k), t:round2(byCat[k].t), items:byCat[k].items}; }).sort(function(a,b2){ return b2.t-a.t; });
-  var tot = round2(cats.reduce(function(a,c){ return a+c.t; },0)), mx = cats.length ? cats[0].t : 1;
-  h += '<div class="mswitch"><button id="mPrev" aria-label="الشهر السابق">→</button><b>'+monthLabel(ym)+'</b><button id="mNext" aria-label="الشهر التالي">←</button></div>';
-  h += '<div class="fcard"><h4><span>أين تذهب أموالك</span><b>'+money(tot)+'</b></h4>';
-  if(!cats.length) h += '<div class="line">لا توجد مصاريف في هذا الشهر. اضغط «+ مصروف» في الأسفل وسجّل أول مصروف، مثل «بنزين» أو «مواد غذائية - حليب».</div>';
+  var cats = Object.keys(byCat).map(function(k){ return {c:catById(k), t:round2(byCat[k].t), items:byCat[k].items}; }).sort(function(a,c){ return c.t-a.t; });
+  var tot = round2(cats.reduce(function(a,c){ return a+c.t; },0)), mx = cats.length ? cats[0].t : 1, inc = incTotals().all;
+  var h = '<div class="fcard"><h4><span>أين ذهبت أموالك فعلًا</span><b>'+money(tot)+'</b></h4>';
+  if(!cats.length) h += '<div class="line">لم تسجّل مصاريف في هذا الشهر. اضغط «+ مصروف» وسجّل ما تصرفه فعلًا، مثل «بنزين» أو «مواد غذائية - حليب».</div>';
   cats.forEach(function(c, i){
     var pct = tot ? Math.round(c.t/tot*100) : 0;
-    h += '<details class="cat'+(i===0?' first':'')+'"><summary><div class="top"><span>'+c.c.name+' <small>'+pct+'%'+(f.inc?' من الدخل '+Math.round(c.t/f.inc*100)+'%':'')+'</small></span><b>'+money(c.t)+'</b></div>'+
+    h += '<details class="cat'+(i===0?' first':'')+'"><summary><div class="top"><span>'+c.c.name+' <small>'+pct+'%'+(inc?' · من الدخل '+Math.round(c.t/inc*100)+'%':'')+'</small></span><b>'+money(c.t)+'</b></div>'+
       '<div class="bar2"><i style="width:'+Math.max(3,c.t/mx*100)+'%"></i></div></summary><div class="its">'+
-      Object.keys(c.items).sort(function(a,b2){ return c.items[b2]-c.items[a]; }).map(function(k){ return '<div><span>'+esc(k)+'</span><b>'+money(c.items[k])+'</b></div>'; }).join('')+'</div></details>';
+      Object.keys(c.items).sort(function(a,c2){ return c.items[c2]-c.items[a]; }).map(function(k){ return '<div><span>'+esc(k)+'</span><b>'+money(c.items[k])+'</b></div>'; }).join('')+'</div></details>';
   });
-  if(cats.length>1) h += '<div class="hint">أكثر ما تصرف عليه في '+monthLabel(ym)+': <b>'+cats[0].c.name+'</b>. اضغط أي فئة لرؤية بنودها.</div>';
-  h += '</div>';
-
-  // مصاريف الشهر
-  h += '<div class="fcard"><h4><span>مصاريف '+monthLabel(ym)+'</span><button class="smallbtn pri" id="bAddExp">+ مصروف</button></h4>'+
-    (ex.length ? ex.slice().sort(function(a,b2){ return b2.date.localeCompare(a.date); }).map(function(x){
+  h += '</div><div class="fcard"><h4><span>مصاريف '+monthLabel(ym)+'</span><button class="smallbtn pri" id="bAddExp">+ مصروف</button></h4>'+
+    (ex.length ? ex.slice().sort(function(a,c){ return c.date.localeCompare(a.date); }).map(function(x){
       return '<button class="lrow" data-exp="'+x.id+'"><span class="n">'+esc(x.item||'بدون وصف')+'<small>'+fmtDate(x.date)+'</small></span><span class="catpill">'+catById(x.cat).name+'</span><b>'+money(x.amount)+'</b></button>';
     }).join('') : '<div class="line">لا شيء بعد.</div>')+'</div>';
-
-  // الدخل والثابتة
-  function listBlock(title, arr, kind, addLbl){
-    return '<div class="fcard"><h4><span>'+title+'</span><b>'+money(sumArr(arr))+'</b></h4>'+
-      arr.map(function(x){ return '<button class="lrow" data-'+kind+'="'+x.id+'"><span class="n">'+esc(x.name)+(kind==='fix'?'<small>'+catById(x.cat||guessCat(x.name)).name+'</small>':'')+'</span><b>'+money(x.amount)+'</b></button>'; }).join('')+
-      '<button class="smallbtn" style="margin-top:10px" id="bAdd_'+kind+'">'+addLbl+'</button></div>';
+  return h + receiptsBlock(ym);
+}
+function receiptsBlock(ym){
+  var b = bud(); if(!b.income.some(function(x){ return x.kind==='var'; })) return '';
+  var rl = b.inLog.filter(function(r){ return ymKey(r.date)===ym; }).sort(function(a,c){ return c.date.localeCompare(a.date); });
+  return '<div class="fcard"><h4><span>دخل متغير مستلم في '+monthLabel(ym)+'</span><b class="g">'+money(sumArr(rl))+'</b></h4>'+
+    (rl.length ? rl.map(function(r){ var src = b.income.find(function(z){ return z.id===r.src; });
+      return '<button class="lrow" data-rlog="'+r.id+'"><span class="n">'+esc(src?src.name:'دخل')+'<small>'+fmtDate(r.date)+(r.note?' · '+esc(r.note):'')+'</small></span><b class="g">'+money(r.amount)+'</b></button>'; }).join('')
+      : '<div class="line">لا مقبوضات في هذا الشهر. سجّلها بزر «+ استلام» في تبويب «الخطة».</div>')+'</div>';
+}
+function tabCmp(ym, f){
+  var pc = planByCat(), ac = actByCat(ym), cats = {}, pT = objSum(pc), aT = objSum(ac), incP = f.inc, incA = incActual(ym);
+  Object.keys(pc).concat(Object.keys(ac)).forEach(function(k){ cats[k] = 1; });
+  var list = Object.keys(cats).map(function(k){ return {k:k, p:pc[k]||0, a:ac[k]||0}; }).sort(function(x,y){ return (y.a-y.p)-(x.a-x.p); });
+  function row(name, p, a, isInc){
+    var d = round2(a-p), over = isInc ? d<0 : d>0, w = p>0 ? Math.min(100, a/p*100*0.8) : (a>0?100:0);
+    return '<div class="cmprow"><div class="h"><span>'+name+'</span><b class="'+(d===0?'':(over?'r':'g'))+'">'+(d>0?'+':'')+money(d)+'</b></div>'+
+      '<div class="track2"><i class="'+(over&&!isInc?'over':'')+'" style="width:'+w+'%"></i>'+(p>0?'<span class="mk" style="left:80%"></span>':'')+'</div>'+
+      '<div class="nums2"><div>المخطط<b>'+money(p)+'</b></div><div>الفعلي<b>'+money(a)+'</b></div><div>'+(p>0?'النسبة<b>'+Math.round(a/p*100)+'%</b>':'—<b>بلا خطة</b>')+'</div></div></div>';
   }
-  h += incomeBlock(ym);
-  h += listBlock('المصاريف الثابتة الشهرية', b.fixed, 'fix', '+ إضافة مصروف ثابت (إيجار، فواتير...)');
-  $('app').innerHTML = h;
-
-  $('mPrev').onclick = function(){ state.bMonth = addMonthsYM(ym,-1); renderBudget(); };
-  $('mNext').onclick = function(){ state.bMonth = addMonthsYM(ym,1); renderBudget(); };
-  $('bAddExp').onclick = function(){ openExpForm(); };
-  $('bAdd_inc').onclick = function(){ openIncomeForm(); };
-  $('bAdd_fix').onclick = function(){ openMonthlyForm('fixed'); };
+  var h = '<div class="fcard"><h4><span>الخطة مقابل الواقع — '+monthLabel(ym)+'</span></h4>'+
+    (ym===today().slice(0,7)?'<div class="hint">الشهر لم ينتهِ بعد؛ الأرقام حتى اليوم.</div>':'')+
+    '<div class="hint" style="margin-bottom:4px">الخط الذهبي على الشريط = حد الخطة.</div>'+
+    row('<b>الدخل</b>', incP, incA, true)+row('<b>مجموع الصرف</b>', pT, aT, false)+'</div>';
+  h += '<div class="fcard"><h4><span>حسب الفئة</span></h4>'+(list.length ? list.map(function(x){ return row(catById(x.k).name, x.p, x.a, false); }).join('') : '<div class="line">لا خطة ولا مصاريف لهذا الشهر.</div>')+'</div>';
+  return h + suggBlock();
+}
+function bindBudget(ym, f){
+  var b = bud();
+  document.querySelectorAll('[data-tab]').forEach(function(x){ x.onclick = function(){ state.bTab = x.dataset.tab; renderBudget(); window.scrollTo(0,0); }; });
+  if($('mPrev')) $('mPrev').onclick = function(){ state.bMonth = addMonthsYM(ym,-1); renderBudget(); };
+  if($('mNext')) $('mNext').onclick = function(){ state.bMonth = addMonthsYM(ym,1); renderBudget(); };
+  if($('bAddExp')) $('bAddExp').onclick = function(){ openExpForm(); };
+  if($('bAdd_inc')) $('bAdd_inc').onclick = function(){ openIncomeForm(); };
+  if($('bAdd_fix')) $('bAdd_fix').onclick = function(){ openMonthlyForm('fixed'); };
   document.querySelectorAll('[data-exp]').forEach(function(x){ x.onclick = function(){ openExpForm(x.dataset.exp); }; });
   document.querySelectorAll('[data-inc]').forEach(function(x){ x.onclick = function(){ openIncomeForm(x.dataset.inc); }; });
+  document.querySelectorAll('[data-fix]').forEach(function(x){ x.onclick = function(){ openMonthlyForm('fixed', x.dataset.fix); }; });
   document.querySelectorAll('[data-rcv]').forEach(function(x){ x.onclick = function(){ openReceiptForm(x.dataset.rcv); }; });
   document.querySelectorAll('[data-rlog]').forEach(function(x){ x.onclick = function(){ var r = b.inLog.find(function(z){ return z.id===x.dataset.rlog; }); if(r) openReceiptForm(r.src, r.id); }; });
   if($('bIncMode')) $('bIncMode').onchange = function(){ b.incMode = $('bIncMode').value; save(); renderBudget(); };
-  document.querySelectorAll('[data-fix]').forEach(function(x){ x.onclick = function(){ openMonthlyForm('fixed', x.dataset.fix); }; });
   if($('bMargin')) $('bMargin').onchange = function(){ b.margin = Number($('bMargin').value); save(); renderBudget(); };
-  if($('bDay')) $('bDay').onchange = function(){ b.payDay = Number($('bDay').value); save(); };
-  if($('bPlan')) $('bPlan').onclick = function(){ buildPlan(f); };
+  if($('bPlan')) $('bPlan').onclick = function(){ openPlanBuilder(); };
+  var sg = planSuggestions();
+  document.querySelectorAll('[data-sugg]').forEach(function(x){ x.onclick = function(){ var it = sg[Number(x.dataset.sugg)]; applySuggestion(it.cat, it.to); renderBudget(); toast('عُدّلت الخطة'); }; });
+}
+/* خطة سداد: تختار الأشخاص، وطريقة التوزيع، وتعدّل مبلغ كل شخص */
+function openPlanBuilder(){
+  var f = finSummary(), b = bud(), method = 'prop', budget = Math.max(0, Math.floor(f.cap)), day = b.payDay, startN = 1;
+  var cand = f.uns.map(function(p){ return {p:p, d:schedOwed(p), on:false, a:0, off:0}; }).sort(function(x,y){ return x.d-y.d; });
+  var dayOpts = ''; for(var d=1; d<=28; d++) dayOpts += '<option value="'+d+'"'+(d===day?' selected':'')+'>'+d+'</option>';
+  sheet('<h3>خطة سداد — اختر من تجدول له</h3>'+
+    '<div class="hint">المتاح لخطة جديدة شهريًا: <b>'+money(Math.max(0,f.cap))+'</b></div><div class="err hidden" id="pbErr" style="margin-top:8px"></div>'+
+    '<div class="field" style="margin-top:12px"><label><span class="qnum">1</span>من تريد أن تجدول له؟</label><div id="pbList"></div></div>'+
+    '<div class="field"><label><span class="qnum">2</span>كم تخصص للخطة شهريًا؟</label><input id="pbBudget" type="number" inputmode="decimal" min="0" step="1" value="'+budget+'"></div>'+
+    '<div class="field"><label><span class="qnum">3</span>كيف يُوزَّع المبلغ؟</label><div class="chips" id="pbMethod">'+
+      '<button type="button" class="chip on" data-m="prop">بنسبة كل دين</button><button type="button" class="chip" data-m="small">الأصغر أولًا</button><button type="button" class="chip" data-m="eq">بالتساوي</button></div>'+
+      '<div class="hint" id="pbMHint"></div></div>'+
+    '<div class="two"><div class="field"><label>يوم السداد</label><select id="pbDay">'+dayOpts+'</select></div>'+
+      '<div class="field"><label>البداية</label><select id="pbStart"><option value="1" selected>الشهر القادم</option><option value="2">بعد شهرين</option><option value="3">بعد 3 أشهر</option><option value="6">بعد 6 أشهر</option><option value="12">بعد سنة</option></select></div></div>'+
+    '<div class="sumbox" id="pbSum"></div>'+
+    '<div class="actions"><button class="btn pri" id="pbOk">اعتماد الخطة</button><button class="btn sec" id="pbNo">إلغاء</button></div>');
+  var MH = {prop:'كل شخص يأخذ من المبلغ بقدر دينه، ويبدأ الجميع معًا.', small:'المبلغ كله لأصغر دين حتى ينتهي، ثم ينتقل للذي بعده. تنتهي من الأشخاص أسرع.', eq:'نفس المبلغ لكل شخص، ويبدأ الجميع معًا.'};
+  function startDate(off){ return addPeriod(today(), startN+off, 'monthly').slice(0,8)+'01'; }
+  function distribute(){
+    var on = cand.filter(function(c){ return c.on; }), tot = round2(on.reduce(function(a,c){ return a+c.d; },0));
+    cand.forEach(function(c){ c.a = 0; c.off = 0; });
+    if(!on.length || !(budget>0)) return;
+    if(method==='prop') on.forEach(function(c){ c.a = Math.min(c.d, Math.ceil(budget*c.d/tot)); });
+    else if(method==='eq') on.forEach(function(c){ c.a = Math.min(c.d, Math.ceil(budget/on.length)); });
+    else { var off = 0; on.forEach(function(c){ c.a = Math.min(c.d, budget); c.off = off; off += Math.ceil(c.d/c.a - 0.0001); }); }
+  }
+  function draw(){
+    $('pbList').innerHTML = cand.length ? cand.map(function(c, i){
+      var n = c.a>0 ? Math.ceil(c.d/c.a - 0.0001) : 0;
+      return '<div class="pick'+(c.on?'':' off')+'"><input type="checkbox" data-i="'+i+'"'+(c.on?' checked':'')+' aria-label="'+esc(c.p.name)+'">'+
+        '<div class="n"><b>'+esc(c.p.name)+'</b><small>الدين '+money(c.d)+(c.on&&n?' · '+countTxt(n,'دفعة واحدة','دفعتان','دفعات','دفعة')+' من '+monthLabel(startDate(c.off).slice(0,7)):'')+'</small></div>'+
+        '<input type="number" inputmode="decimal" min="0" step="1" data-a="'+i+'" value="'+(c.on&&c.a?c.a:'')+'" placeholder="/ شهر"'+(c.on?'':' disabled')+' aria-label="المبلغ الشهري"></div>';
+    }).join('') : '<div class="line">لا توجد ديون بلا جدولة.</div>';
+    $('pbList').querySelectorAll('[data-i]').forEach(function(cb){ cb.onchange = function(){ cand[cb.dataset.i].on = cb.checked; distribute(); draw(); }; });
+    $('pbList').querySelectorAll('[data-a]').forEach(function(inp){ inp.oninput = function(){ cand[inp.dataset.a].a = Math.max(0, parseFloat(inp.value)||0); summary(); }; inp.onchange = draw; });
+    summary();
+  }
+  function summary(){
+    var on = cand.filter(function(c){ return c.on && c.a>0; });
+    $('pbMHint').textContent = MH[method];
+    if(!on.length){ $('pbSum').innerHTML = 'اختر شخصًا واحدًا على الأقل.'; return; }
+    var monthly = method==='small' ? Math.max.apply(null, on.map(function(c){ return c.a; })) : round2(on.reduce(function(a,c){ return a+c.a; },0));
+    var end = on.map(function(c){ return addPeriod(startDate(c.off), Math.ceil(c.d/c.a - 0.0001)-1, 'monthly'); }).sort().pop();
+    var h = 'ستدفع نحو <b>'+money(monthly)+'</b> شهريًا يوم <b>'+day+'</b>، وتنتهي من '+countTxt(on.length,'هذا الشخص','الشخصين','الأشخاص','شخصًا')+' في <b>'+monthLabel(end.slice(0,7))+'</b>.';
+    if(monthly > Math.max(0,f.cap)+0.5) h += '<br><span class="r">أعلى من المتاح لك ('+money(Math.max(0,f.cap))+') بـ '+money(round2(monthly-f.cap))+'.</span>';
+    $('pbSum').innerHTML = h;
+  }
+  document.querySelectorAll('#pbMethod .chip').forEach(function(c){ c.onclick = function(){ method = c.dataset.m; document.querySelectorAll('#pbMethod .chip').forEach(function(x){ x.classList.toggle('on', x===c); }); distribute(); draw(); }; });
+  $('pbBudget').oninput = function(){ budget = Math.max(0, parseFloat($('pbBudget').value)||0); distribute(); draw(); };
+  $('pbDay').onchange = function(){ day = Number($('pbDay').value); summary(); };
+  $('pbStart').onchange = function(){ startN = Number($('pbStart').value); draw(); };
+  $('pbNo').onclick = closeSheet;
+  $('pbOk').onclick = function(){
+    var on = cand.filter(function(c){ return c.on && c.a>0; });
+    if(!on.length){ $('pbErr').textContent = 'اختر شخصًا واحدًا على الأقل واكتب مبلغه.'; $('pbErr').classList.remove('hidden'); return; }
+    on.forEach(function(c){
+      c.p.sched = {mode:'quick', freq:'monthly', day:day, wday:0, start:startDate(c.off), amount:round2(c.a),
+        paidAtStart: round2(schedEntries(c.p).reduce(function(a,e){ return a+paid(e); },0))};
+    });
+    b.payDay = day; save(); closeSheet(); renderBudget();
+    toast('اعتُمدت الخطة لـ '+countTxt(on.length,'شخص واحد','شخصين','أشخاص','شخصًا'));
+  };
+  draw();
 }
 function catOptions(sel){ return CATS.map(function(c){ return '<option value="'+c.id+'"'+(c.id===sel?' selected':'')+'>'+c.name+'</option>'; }).join(''); }
 function openExpForm(id){
@@ -2001,11 +2171,6 @@ function incomeBlock(ym){
   if(hasVar){
     h += '<div class="field" style="margin-top:12px"><label>حساب الدخل المتغير</label><select id="bIncMode">'+
       '<option value="avg"'+(b.incMode!=='min'?' selected':'')+'>المتوسط</option><option value="min"'+(b.incMode==='min'?' selected':'')+'>الأقل (أحوط للخطة)</option></select></div>';
-    var rl = b.inLog.filter(function(r){ return ymKey(r.date)===ym; }).sort(function(a,c){ return c.date.localeCompare(a.date); });
-    h += '<div class="subhead">مقبوضات '+monthLabel(ym)+': '+money(sumArr(rl))+'</div>'+
-      (rl.length ? rl.map(function(r){ var src = b.income.find(function(z){ return z.id===r.src; });
-        return '<button class="lrow" data-rlog="'+r.id+'"><span class="n">'+esc(src?src.name:'دخل')+'<small>'+fmtDate(r.date)+(r.note?' · '+esc(r.note):'')+'</small></span><b class="g">'+money(r.amount)+'</b></button>'; }).join('')
-        : '<div class="line">لا مقبوضات في هذا الشهر.</div>');
   }
   return h + '</div>';
 }
@@ -2063,9 +2228,9 @@ function openReceiptForm(srcId, rid){
 }
 function openMonthlyForm(kind, id){
   var b = bud(), arr = b[kind], x = id ? arr.find(function(e){ return e.id===id; }) : null, isFix = kind==='fixed';
-  sheet('<h3>'+(isFix?(x?'تعديل مصروف ثابت':'مصروف ثابت شهري'):(x?'تعديل دخل':'دخل شهري'))+'</h3><div class="err hidden" id="mErr"></div>'+
-    '<div class="field"><label>'+(isFix?'الوصف':'مصدر الدخل')+'</label><input id="mName" value="'+esc(x?x.name:'')+'" placeholder="'+(isFix?'مثال: إيجار، كهرباء، قسط سيارة':'مثال: راتب')+'"><div class="autocat" id="mAuto"></div></div>'+
-    '<div class="field"><label>المبلغ الشهري (ريال)</label><input id="mAmount" type="number" inputmode="decimal" min="0" step="0.01" value="'+(x?x.amount:'')+'"></div>'+
+  sheet('<h3>'+(isFix?(x?'تعديل بند في الخطة':'بند في الخطة الشهرية'):(x?'تعديل دخل':'دخل شهري'))+'</h3><div class="err hidden" id="mErr"></div>'+
+    '<div class="field"><label>'+(isFix?'الوصف':'مصدر الدخل')+'</label><input id="mName" value="'+esc(x?x.name:'')+'" placeholder="'+(isFix?'مثال: إيجار، مواد غذائية، بنزين، كهرباء':'مثال: راتب')+'"><div class="autocat" id="mAuto"></div></div>'+
+    '<div class="field"><label>'+(isFix?'المبلغ المخطط شهريًا (ريال)':'المبلغ الشهري (ريال)')+'</label><input id="mAmount" type="number" inputmode="decimal" min="0" step="0.01" value="'+(x?x.amount:'')+'"></div>'+
     (isFix?'<div class="field"><label>الفئة</label><select id="mCat">'+catOptions(x?(x.cat||guessCat(x.name)):'other')+'</select></div>':'')+
     '<div class="actions"><button class="btn pri" id="mSave">حفظ</button>'+(x?'<button class="btn danger" id="mDel">حذف</button>':'<button class="btn sec" id="mNo">إلغاء</button>')+'</div>');
   var manual = !!x;
@@ -2124,7 +2289,7 @@ function renderSettings(){
       '<div class="actions"><button class="btn pri" id="exp">حفظ نسخة احتياطية</button><button class="btn sec" id="imp">استرجاع نسخة</button></div>'+
       '<input type="file" id="impFile" accept=".json,application/json" class="hidden"></div>')+
     '<div class="set"><h4>حذف كل البيانات</h4><p>يحذف كل الأشخاص والحقوق والدفعات من هذا الجوال نهائيًا.</p><button class="btn danger" id="wipe">حذف كل البيانات</button></div>'+
-    '<div class="hint" style="text-align:center;margin-top:16px">الحقوق المالية — الإصدار 12</div>';
+    '<div class="hint" style="text-align:center;margin-top:16px">الحقوق المالية — الإصدار 13</div>';
   function ownerPrev(){
     var tmp = {name:$('oName').value.trim(), phone:$('oPhone').value.trim(), sign:$('oSign').value.trim()}, keep = db.owner;
     db.owner = tmp; var sg = signLines(); db.owner = keep;
