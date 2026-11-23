@@ -377,6 +377,18 @@ header h1{font-size:20px;letter-spacing:.2px}
 .sheet::before{background:var(--gold-grad);opacity:.6}
 .listsum{border:1px solid rgba(180,138,47,.22)}
 
+/* نافذة الجدولة */
+.modes{display:grid;gap:8px;margin:12px 0 14px}
+.modes button{display:flex;gap:12px;align-items:center;text-align:right;padding:12px 14px;border:2px solid var(--line);border-radius:14px;background:var(--input);width:100%}
+.modes button.on{border-color:var(--gold);background:var(--gold-soft)}
+.modes .dot{width:20px;height:20px;border-radius:50%;border:2px solid var(--muted);flex:none}
+.modes button.on .dot{border-color:var(--gold);background:radial-gradient(circle,var(--gold) 0 45%,transparent 50%)}
+.modes b{display:block;font-family:var(--f-head);font-size:15px}
+.modes small{color:var(--muted);font-size:13px}
+.qnum{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:50%;background:var(--brand);color:#ffffff;font-size:12px;margin-left:6px}
+.sumbox{background:var(--tint);color:var(--ink);border-radius:14px;padding:12px 14px;font-size:14px;line-height:1.9;margin:6px 0 4px;border:1px solid rgba(17,96,79,.15)}
+.sumbox b{font-family:var(--f-head)}
+.amtq{display:flex;gap:6px;margin-top:8px}
 /* مصادر الدخل */
 .isrc{display:flex;align-items:center;gap:8px;padding:10px 0;border-top:1px solid var(--line)}
 .isrc .n{flex:1;min-width:0;text-align:right;font-size:14px}
@@ -521,7 +533,9 @@ function schedDate(sc, i){
 function schedRows(p){
   var sc = p.sched, target = schedTarget(p), rows = [];
   if(target <= 0) return [];
-  if(sc.mode==='custom'){
+  if(sc.mode==='once'){
+    rows = [{date:sc.date, amount:target}];
+  } else if(sc.mode==='custom'){
     rows = sc.rows.slice().sort(function(a,b){ return a.date.localeCompare(b.date); }).map(function(r){ return {date:r.date, amount:r.amount}; });
   } else {
     var acc = 0;
@@ -544,6 +558,7 @@ function schedDue(p){
 function schedLate(p){ var nx = hasSched(p) ? schedNext(p) : null; return !!nx && nx.date < today(); }
 function schedRule(p){
   var sc = p.sched;
+  if(sc.mode==='once') return 'دفعة واحدة بتاريخ '+fmtDate(sc.date);
   if(sc.mode==='custom') return 'جدول محدد: '+countTxt(sc.rows.length,'موعد واحد','موعدان','مواعيد','موعدًا');
   return money(sc.amount)+' '+(sc.freq==='weekly' ? 'كل يوم '+WDAYS[sc.wday] : 'يوم '+sc.day+' من كل شهر');
 }
@@ -860,7 +875,7 @@ function schedCard(p){
   var owed = schedOwed(p);
   if(!hasSched(p)){
     if(owed<=0) return '';
-    return '<button class="sched-cta" id="schedNew"><i>＋</i><span><b>جدولة سداد ما علي له</b><br>'+money(owed)+' — حدّد مبلغًا يوم كذا من كل شهر، أو مواعيد ومبالغ بعينها، وتصلك التنبيهات حسبها.</span></button>';
+    return '<button class="sched-cta" id="schedNew"><i>＋</i><span><b>جدولة سداد ما علي له ('+money(owed)+')</b><br>دفعة واحدة، أو أقساط شهرية، أو مواعيد تحددها، وتصلك التنبيهات حسبها.</span></button>';
   }
   var rows = schedRows(p), nx = schedNext(p), done = rows.filter(function(x){ return x.rest<=0; }).length;
   var h = '<div class="sched"><div class="sh"><h4>جدولة سداد ما علي له</h4>'+
@@ -909,9 +924,12 @@ function bindSched(p){
       '<div class="two"><div class="field"><label>المبلغ (ريال)</label><input id="spAmount" type="number" inputmode="decimal" min="0" step="0.01" value="'+round2(def)+'"></div>'+
         '<div class="field"><label>التاريخ</label><input id="spDate" type="date" value="'+today()+'"></div></div>'+
       '<div class="field"><label>ملاحظة (اختياري)</label><input id="spNote" placeholder="مثال: تحويل بنكي"></div>'+
-      '<div class="hint" style="margin:-4px 0 10px">يُوزَّع المبلغ على حقوقك له من الأقدم.</div>'+
+      '<div class="amtq" style="margin:-4px 0 10px"><button type="button" class="chip" id="spDue">المستحق الآن ('+money(round2(def))+')</button><button type="button" class="chip" id="spAll">كامل المبلغ ('+money(owed)+')</button></div>'+
+      '<div class="hint" style="margin:-2px 0 10px">يُوزَّع المبلغ على حقوقك له من الأقدم.</div>'+
       '<div class="actions"><button class="btn pri" id="spSave">حفظ السداد</button><button class="btn sec" id="spNo">إلغاء</button></div>');
     $('spNo').onclick = closeSheet;
+    $('spDue').onclick = function(){ $('spAmount').value = round2(def); };
+    $('spAll').onclick = function(){ $('spAmount').value = owed; };
     $('spSave').onclick = function(){
       var a = parseFloat($('spAmount').value), err = $('spErr');
       function fail(m){ err.textContent = m; err.classList.remove('hidden'); }
@@ -923,26 +941,35 @@ function bindSched(p){
   };
 }
 function openSchedForm(p){
-  var sc = p.sched || {mode:'quick', freq:'monthly', day:Number(today().slice(8,10)), wday:new Date().getDay(), start:today(), amount:'', rows:[]};
-  var mode = sc.mode, owed = schedOwed(p), rows = (sc.rows||[]).map(function(r){ return {date:r.date, amount:r.amount}; });
+  var owed = schedOwed(p), sc = p.sched || null;
+  var mode = sc ? (sc.mode==='once' ? 'once' : sc.mode==='custom' ? 'custom' : 'quick') : 'quick';
+  var how = 'amount', day = sc && sc.day ? sc.day : 27, startN = null;
+  var start = sc && sc.start ? sc.start : today();
+  var onceDate = sc && sc.mode==='once' ? sc.date : addPeriod(today(), 1, 'monthly');
+  var rows = (sc && sc.mode==='custom' ? sc.rows : []).map(function(r){ return {date:r.date, amount:r.amount}; });
   if(!rows.length) rows = [{date:'', amount:''}];
-  var dayOpts = ''; for(var d=1; d<=31; d++) dayOpts += '<option value="'+d+'"'+(d===sc.day?' selected':'')+'>'+d+'</option>';
-  sheet('<h3>جدولة سداد ما علي لـ '+esc(p.name)+'</h3>'+
-    '<div class="hint" style="margin-bottom:12px">المتبقي عليك له الآن: <b>'+money(owed)+'</b></div><div class="err hidden" id="scErr"></div>'+
-    '<div class="field"><label>طريقة الجدولة</label><div class="toggle" id="scMode">'+
-      '<button type="button" class="pl'+(mode==='quick'?' on':'')+'" data-m="quick">سريعة (مبلغ ثابت دوري)</button>'+
-      '<button type="button" class="pl'+(mode==='custom'?' on':'')+'" data-m="custom">بالتحديد (تواريخ ومبالغ)</button></div></div>'+
-    '<div id="scQuick">'+
-      '<div class="two"><div class="field"><label>التكرار</label><select id="scFreq"><option value="monthly"'+(sc.freq!=='weekly'?' selected':'')+'>كل شهر</option><option value="weekly"'+(sc.freq==='weekly'?' selected':'')+'>كل أسبوع</option></select></div>'+
-        '<div class="field" id="scDayW"><label>في يوم (من الشهر)</label><select id="scDay">'+dayOpts+'</select></div>'+
-        '<div class="field" id="scWdayW"><label>في يوم</label><select id="scWday">'+WDAYS.map(function(w,i){ return '<option value="'+i+'"'+(i===sc.wday?' selected':'')+'>'+w+'</option>'; }).join('')+'</select></div></div>'+
-      '<div class="two"><div class="field"><label>مبلغ كل دفعة (ريال)</label><input id="scAmount" type="number" inputmode="decimal" min="0" step="0.01" value="'+(sc.amount||'')+'"></div>'+
-        '<div class="field"><label>أو عدد الدفعات</label><input id="scCount" type="number" inputmode="numeric" min="1" max="600" step="1" placeholder="اختياري"></div></div>'+
-      '<div class="field"><label>تاريخ بدء السداد</label><input id="scStart" type="date" value="'+sc.start+'">'+'<div class="chips" style="margin:8px 0 0">'+[['0','من الآن'],['3','بعد 3 أشهر'],['6','بعد 6 أشهر'],['12','بعد سنة'],['24','بعد سنتين']].map(function(c){ return '<button type="button" class="chip" data-after="'+c[0]+'">'+c[1]+'</button>'; }).join('')+'</div></div>'+
+  function modeBtn(m, t, d){ return '<button type="button" data-m="'+m+'"'+(mode===m?' class="on"':'')+'><span class="dot"></span><span><b>'+t+'</b><small>'+d+'</small></span></button>'; }
+  var dayOpts = ''; for(var d=1; d<=31; d++) dayOpts += '<option value="'+d+'"'+(d===day?' selected':'')+'>'+d+'</option>';
+  sheet('<h3>كيف ستسدد '+esc(p.name)+'؟</h3>'+
+    '<div class="hint">المتبقي عليك له: <b>'+money(owed)+'</b></div><div class="err hidden" id="scErr" style="margin-top:10px"></div>'+
+    '<div class="modes" id="scMode">'+
+      modeBtn('once','دفعة واحدة','تسدد المبلغ كله في تاريخ تحدده')+
+      modeBtn('quick','أقساط شهرية','مبلغ في يوم محدد من كل شهر')+
+      modeBtn('custom','مواعيد أحددها','تكتب كل موعد ومبلغه بنفسك')+
     '</div>'+
-    '<div id="scCustom"><div id="scRows"></div><button type="button" class="smallbtn" id="scAddRow">+ إضافة موعد</button></div>'+
-    '<div class="hint" id="scHint" style="margin:10px 0 4px;line-height:1.8"></div>'+
-    '<div class="actions"><button class="btn pri" id="scSave">حفظ الجدولة</button><button class="btn sec" id="scNo">إلغاء</button></div>');
+    '<div id="pOnce"><div class="field"><label>تاريخ السداد</label><input id="scOnce" type="date" value="'+onceDate+'"></div></div>'+
+    '<div id="pQuick">'+
+      '<div class="field"><label><span class="qnum">1</span>كم تدفع؟</label><div class="toggle" id="scHow">'+
+        '<button type="button" class="pl on" data-h="amount">مبلغ كل شهر</button><button type="button" class="pl" data-h="months">عدد الأشهر</button></div>'+
+        '<input id="scVal" type="number" inputmode="decimal" min="0" step="0.01" style="margin-top:8px" value="'+(sc && sc.mode==='quick' && sc.amount ? sc.amount : '')+'"></div>'+
+      '<div class="field"><label><span class="qnum">2</span>في أي يوم من الشهر؟</label><select id="scDay">'+dayOpts+'</select></div>'+
+      '<div class="field"><label><span class="qnum">3</span>متى تبدأ؟</label><div class="chips" id="scStartChips">'+
+        [[0,'من الآن'],[1,'الشهر القادم'],[3,'بعد 3 أشهر'],[6,'بعد 6 أشهر'],[12,'بعد سنة']].map(function(c){ return '<button type="button" class="chip" data-n="'+c[0]+'">'+c[1]+'</button>'; }).join('')+
+        '</div><input id="scStart" type="date" value="'+start+'"></div>'+
+    '</div>'+
+    '<div id="pCustom"><div id="scRows"></div><button type="button" class="smallbtn" id="scAddRow">+ إضافة موعد</button></div>'+
+    '<div class="sumbox" id="scHint"></div>'+
+    '<div class="actions"><button class="btn pri" id="scSave">حفظ</button><button class="btn sec" id="scNo">إلغاء</button></div>');
 
   function drawRows(){
     $('scRows').innerHTML = rows.map(function(r, i){
@@ -950,40 +977,47 @@ function openSchedForm(p){
         '<input type="number" inputmode="decimal" min="0" step="0.01" data-i="'+i+'" data-k="amount" value="'+(r.amount===''?'':r.amount)+'" placeholder="المبلغ" aria-label="المبلغ">'+
         '<button type="button" class="x" data-del="'+i+'">حذف</button></div>';
     }).join('');
-    $('scRows').querySelectorAll('input').forEach(function(inp){ inp.oninput = inp.onchange = function(){
-      var r = rows[inp.dataset.i]; r[inp.dataset.k] = inp.dataset.k==='amount' ? inp.value : inp.value; sync();
-    }; });
-    $('scRows').querySelectorAll('[data-del]').forEach(function(b){ b.onclick = function(){ rows.splice(Number(b.dataset.del),1); if(!rows.length) rows.push({date:'',amount:''}); drawRows(); sync(); }; });
+    $('scRows').querySelectorAll('input').forEach(function(inp){ inp.oninput = inp.onchange = function(){ rows[inp.dataset.i][inp.dataset.k] = inp.value; sync(); }; });
+    $('scRows').querySelectorAll('[data-del]').forEach(function(bt){ bt.onclick = function(){ rows.splice(Number(bt.dataset.del),1); if(!rows.length) rows.push({date:'',amount:''}); drawRows(); sync(); }; });
   }
   function quickConf(){
-    var amt = parseFloat($('scAmount').value), cnt = parseInt($('scCount').value,10);
-    if(cnt>0 && !(amt>0)) amt = Math.ceil(owed/cnt*100)/100;
-    return {mode:'quick', freq:$('scFreq').value, day:Number($('scDay').value), wday:Number($('scWday').value), start:$('scStart').value||today(), amount:round2(amt||0)};
+    var v = parseFloat($('scVal').value), amt = how==='months' ? (v>=1 ? Math.ceil(owed/Math.round(v)*100)/100 : 0) : v;
+    return {mode:'quick', freq:'monthly', day:Number($('scDay').value), wday:0, start:$('scStart').value||today(), amount:round2(amt||0)};
   }
   function sync(){
-    $('scQuick').classList.toggle('hidden', mode!=='quick'); $('scCustom').classList.toggle('hidden', mode!=='custom');
-    var w = $('scFreq').value==='weekly'; $('scDayW').classList.toggle('hidden', w); $('scWdayW').classList.toggle('hidden', !w);
+    ['once','quick','custom'].forEach(function(m){ $('p'+m.charAt(0).toUpperCase()+m.slice(1)).classList.toggle('hidden', mode!==m); });
+    $('scVal').placeholder = how==='months' ? 'مثال: 6' : 'مثال: 1000';
+    document.querySelectorAll('#scStartChips .chip').forEach(function(c){ c.classList.toggle('on', String(startN)===c.dataset.n); });
     var h = '';
-    if(mode==='quick'){
+    if(mode==='once'){
+      var od = $('scOnce').value;
+      h = od ? 'ستسدد المبلغ كله <b>'+money(owed)+'</b> يوم <b>'+fmtDate(od)+'</b> ('+whenLabel(od)+').' : 'اختر تاريخ السداد.';
+    } else if(mode==='quick'){
       var c = quickConf();
       if(c.amount>0 && owed>0){
-        var n = Math.ceil(owed/c.amount - 0.0001), last = schedDate(c, n-1);
-        h = 'سيُسدَّد على '+countTxt(n,'دفعة واحدة','دفعتين','دفعات','دفعة')+': '+money(c.amount)+' '+(c.freq==='weekly'?'كل يوم '+WDAYS[c.wday]:'يوم '+c.day+' من كل شهر')+
-          '<br>أول موعد: <b>'+fmtDate(schedDate(c,0))+'</b> · آخر موعد: <b>'+fmtDate(last)+'</b>'+(round2(owed - c.amount*(n-1))<c.amount?' (بمبلغ '+money(round2(owed - c.amount*(n-1)))+')':'');
-      }
+        var n = Math.ceil(owed/c.amount - 0.0001), last = round2(owed - c.amount*(n-1));
+        h = 'ستسدد <b>'+money(c.amount)+'</b> يوم <b>'+c.day+'</b> من كل شهر، على '+countTxt(n,'دفعة واحدة','دفعتين','دفعات','دفعة')+'.'+
+          '<br>أول دفعة: <b>'+fmtDate(schedDate(c,0))+'</b> · آخر دفعة: <b>'+fmtDate(schedDate(c,n-1))+'</b>'+(last<c.amount?' بمبلغ '+money(last):'')+'.';
+      } else h = how==='months' ? 'اكتب عدد الأشهر.' : 'اكتب المبلغ الذي تدفعه كل شهر.';
     } else {
-      var sum = round2(rows.reduce(function(a,r){ return a+(parseFloat(r.amount)||0); },0)), gap = round2(owed-sum);
+      var sum = round2(rows.reduce(function(a2,r){ return a2+(parseFloat(r.amount)||0); },0)), gap = round2(owed-sum);
       h = 'مجموع المواعيد: <b>'+money(sum)+'</b> من '+money(owed)+(gap>0.004?' · <span class="r">يبقى '+money(gap)+' بلا موعد</span>':gap<-0.004?' · <span class="r">أكثر من المتبقي بـ '+money(-gap)+'</span>':' ✓');
     }
     $('scHint').innerHTML = h;
   }
-  document.querySelectorAll('#scMode button').forEach(function(b){ b.onclick = function(){
-    mode = b.dataset.m; document.querySelectorAll('#scMode button').forEach(function(x){ x.classList.toggle('on', x===b); }); sync();
+  document.querySelectorAll('#scMode button').forEach(function(bt){ bt.onclick = function(){
+    mode = bt.dataset.m; document.querySelectorAll('#scMode button').forEach(function(x){ x.classList.toggle('on', x===bt); }); sync();
   }; });
-  ['scFreq','scDay','scWday','scStart'].forEach(function(id){ $(id).onchange = sync; });
-  document.querySelectorAll('[data-after]').forEach(function(b){ b.onclick = function(){ $('scStart').value = addPeriod(today(), Number(b.dataset.after), 'monthly'); sync(); }; });
-  $('scAmount').oninput = function(){ if($('scAmount').value) $('scCount').value=''; sync(); };
-  $('scCount').oninput = function(){ if($('scCount').value) $('scAmount').value=''; sync(); };
+  document.querySelectorAll('#scHow button').forEach(function(bt){ bt.onclick = function(){
+    how = bt.dataset.h; document.querySelectorAll('#scHow button').forEach(function(x){ x.classList.toggle('on', x===bt); }); $('scVal').value = ''; sync();
+  }; });
+  document.querySelectorAll('#scStartChips .chip').forEach(function(c){ c.onclick = function(){
+    startN = Number(c.dataset.n);
+    $('scStart').value = startN===0 ? today() : addPeriod(today(), startN, 'monthly').slice(0,8)+'01';
+    sync();
+  }; });
+  $('scVal').oninput = sync; $('scDay').onchange = sync; $('scOnce').onchange = sync;
+  $('scStart').onchange = function(){ startN = null; sync(); };
   $('scAddRow').onclick = function(){
     var last = rows.length ? rows[rows.length-1].date : '';
     rows.push({date: last ? addPeriod(last,1,'monthly') : today(), amount:''}); drawRows(); sync();
@@ -991,17 +1025,19 @@ function openSchedForm(p){
   $('scNo').onclick = closeSheet;
   $('scSave').onclick = function(){
     var err = $('scErr'); function fail(m){ err.textContent = m; err.classList.remove('hidden'); }
-    var paidNow = round2(schedEntries(p).reduce(function(a,e){ return a+paid(e); },0));
-    var base = p.sched ? p.sched.paidAtStart : paidNow, conf;
-    if(mode==='quick'){
+    var paidNow = round2(schedEntries(p).reduce(function(a2,e){ return a2+paid(e); },0)), conf;
+    if(mode==='once'){
+      if(!$('scOnce').value) return fail('اختر تاريخ السداد.');
+      conf = {mode:'once', date:$('scOnce').value};
+    } else if(mode==='quick'){
       conf = quickConf();
-      if(!(conf.amount>0)) return fail('اكتب مبلغ كل دفعة، أو عدد الدفعات.');
+      if(!(conf.amount>0)) return fail(how==='months' ? 'اكتب عدد الأشهر.' : 'اكتب المبلغ الذي تدفعه كل شهر.');
     } else {
       var clean = rows.filter(function(r){ return r.date && parseFloat(r.amount)>0; }).map(function(r){ return {date:r.date, amount:round2(parseFloat(r.amount))}; });
       if(!clean.length) return fail('أضف موعدًا واحدًا على الأقل بتاريخه ومبلغه.');
       conf = {mode:'custom', rows:clean};
     }
-    conf.paidAtStart = base;
+    conf.paidAtStart = p.sched ? p.sched.paidAtStart : paidNow;
     p.sched = conf; save(); closeSheet(); render(); toast('تم حفظ الجدولة');
   };
   drawRows(); sync();
@@ -2088,7 +2124,7 @@ function renderSettings(){
       '<div class="actions"><button class="btn pri" id="exp">حفظ نسخة احتياطية</button><button class="btn sec" id="imp">استرجاع نسخة</button></div>'+
       '<input type="file" id="impFile" accept=".json,application/json" class="hidden"></div>')+
     '<div class="set"><h4>حذف كل البيانات</h4><p>يحذف كل الأشخاص والحقوق والدفعات من هذا الجوال نهائيًا.</p><button class="btn danger" id="wipe">حذف كل البيانات</button></div>'+
-    '<div class="hint" style="text-align:center;margin-top:16px">الحقوق المالية — الإصدار 11</div>';
+    '<div class="hint" style="text-align:center;margin-top:16px">الحقوق المالية — الإصدار 12</div>';
   function ownerPrev(){
     var tmp = {name:$('oName').value.trim(), phone:$('oPhone').value.trim(), sign:$('oSign').value.trim()}, keep = db.owner;
     db.owner = tmp; var sg = signLines(); db.owner = keep;
