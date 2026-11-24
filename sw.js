@@ -1,5 +1,5 @@
 // غيّر رقم الإصدار مع كل تحديث للتطبيق
-var CACHE = 'huquq-v24';
+var CACHE = 'huquq-v25';
 var FONTS = 'huquq-fonts'; // الخطوط تُحفظ أول مرة وتبقى عبر التحديثات
 var FILES = ['./', './index.html', './manifest.json', './icon-192.png', './icon-512.png'];
 
@@ -28,12 +28,21 @@ self.addEventListener('fetch', function (e) {
     return;
   }
   if (url.origin !== self.location.origin) return; // Google Drive وغيره: من الشبكة مباشرة
-  // صفحة التطبيق: من الإنترنت أولًا (أحدث نسخة دائمًا)، والنسخة المحفوظة عند انقطاع الإنترنت
+  // صفحة التطبيق: من الإنترنت أولًا (أحدث نسخة)، لكن لا ننتظر الإنترنت أكثر من 3 ثوانٍ:
+  // إن انقطع أو ضعف أو جاء رد خاطئ تُفتح النسخة المحفوظة فورًا، ويُكمَل التحديث في الخلفية للمرة القادمة.
   if (e.request.mode === 'navigate' || /\/(index\.html)?$/.test(url.pathname)) {
-    e.respondWith(fetch(e.request, { cache: 'no-store' }).then(function (res) {
-      if (res.ok) { var cp = res.clone(); caches.open(CACHE).then(function (c) { c.put('./index.html', cp); }); }
-      return res;
-    }).catch(function () { return caches.match('./index.html'); }));
+    var cached = function () { return caches.match('./index.html'); };
+    var net = fetch(e.request, { cache: 'no-store' }).then(function (res) {
+      if (!res.ok) throw new Error('bad response');
+      var cp = res.clone();
+      return caches.open(CACHE).then(function (c) { return c.put('./index.html', cp); }).then(function () { return res; });
+    });
+    var slow = new Promise(function (resolve) { setTimeout(resolve, 3000); }).then(cached);
+    e.respondWith(Promise.race([
+      net.catch(function () { return cached().then(function (r) { return r || fetch(e.request); }); }),
+      slow.then(function (r) { return r || net; })
+    ]));
+    e.waitUntil(net.catch(function () {}));
     return;
   }
   e.respondWith(caches.match(e.request, { ignoreSearch: true }).then(function (r) {
